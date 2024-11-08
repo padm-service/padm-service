@@ -1,4 +1,4 @@
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 
 import { Base } from "./schema";
@@ -14,8 +14,8 @@ export const Key = sqliteTable("key", {
   userId: text("userId").notNull(),
 });
 
-export const szKey = createSelectSchema(Key);
+export const sKey = createSelectSchema(Key);
 
-export const izKey = createInsertSchema(Key);
+export const iKey = createInsertSchema(Key);
 
-export const patchsSchema = izKey.partial();
+export const updateKey = iKey.partial();

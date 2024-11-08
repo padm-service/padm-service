@@ -4,7 +4,6 @@ import { getCookie } from "hono/cookie";
 import { HTTPException } from "hono/http-exception";
 import { Jwt } from "hono/utils/jwt";
 import * as HttpStatusCodes from "stoker/http-status-codes";
-import * as HttpStatusPhrases from "stoker/http-status-phrases";
 
 import type { User } from "@/lib/types";
 
@@ -92,7 +91,6 @@ export function auth(opts: Options): MiddlewareHandler {
 async function exchange(ctx: Context, key?: string) {
   if (!key)
     return "";
-
   const slices = key.split("-");
   if (slices.length !== 3) {
     throw new HTTPException(401, {

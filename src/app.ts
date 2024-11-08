@@ -1,7 +1,7 @@
 import createApp from "@/lib/create-app";
 import index from "@/routes/index.route";
 import tasks from "@/routes/tasks/tasks.index";
-import user from "@/routes/user/user.index";
+import user from "@/routes/iam/iam.index";
 
 const app = createApp();
 

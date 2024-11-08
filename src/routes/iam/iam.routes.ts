@@ -7,10 +7,10 @@ import { insertUser, partialUser, selectUser } from "@/db/schema/user";
 import { confilctSchema, errorSchema } from "@/lib/constants";
 import { zToken } from "@/lib/types";
 
-const tags = ["User"];
+const tags = ["iam"];
 
 export const register = createRoute({
-  path: "/user/register",
+  path: "/iam/register",
   method: "post",
   tags,
   request: {
@@ -31,7 +31,7 @@ export const register = createRoute({
 });
 
 export const login = createRoute({
-  path: "/user/login",
+  path: "/iam/login",
   method: "post",
   request: {
     body: jsonContentRequired(

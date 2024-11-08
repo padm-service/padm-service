@@ -13,7 +13,7 @@ import { ZOD_ERROR_CODES, ZOD_ERROR_MESSAGES } from "@/lib/constants";
 import { omit } from "@/lib/omit-object";
 import { DAY } from "@/lib/time";
 
-import type { LoginRoute, RegisterRoute } from "./user.routes";
+import type { LoginRoute, RegisterRoute } from "./iam.routes";
 
 export const register: AppRouteHandler<RegisterRoute> = async (c) => {
   const user = c.req.valid("json");
