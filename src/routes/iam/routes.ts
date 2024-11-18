@@ -3,7 +3,7 @@ import * as HttpStatusCodes from "stoker/http-status-codes";
 import { jsonContent, jsonContentRequired } from "stoker/openapi/helpers";
 import { createErrorSchema, IdParamsSchema } from "stoker/openapi/schemas";
 
-import { insertUser, partialUser, selectUser } from "@/db/schema/user";
+import { insertUser } from "@/db/schema";
 import { confilctSchema, errorSchema } from "@/lib/constants";
 import { zToken } from "@/lib/types";
 

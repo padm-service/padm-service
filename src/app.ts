@@ -1,7 +1,10 @@
 import createApp from "@/lib/create-app";
+import assistant from "@/routes/assistants";
+import user from "@/routes/iam";
 import index from "@/routes/index.route";
-import tasks from "@/routes/tasks/tasks.index";
-import user from "@/routes/iam/iam.index";
+import key from "@/routes/keys";
+import services from "@/routes/services";
+import tasks from "@/routes/tasks";
 
 const app = createApp();
 
@@ -9,6 +12,9 @@ const routes = [
   index,
   tasks,
   user,
+  key,
+  assistant,
+  services,
 ] as const;
 
 routes.forEach((route) => {

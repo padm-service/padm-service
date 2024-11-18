@@ -1,5 +1,5 @@
 import argon2 from "argon2";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { Jwt } from "hono/utils/jwt";
 import * as HttpStatusCodes from "stoker/http-status-codes";
 import * as HttpStatusPhrases from "stoker/http-status-phrases";
@@ -7,13 +7,12 @@ import * as HttpStatusPhrases from "stoker/http-status-phrases";
 import type { AppRouteHandler } from "@/lib/types";
 
 import db from "@/db";
-import { User } from "@/db/schema/user";
+import { User } from "@/db/schema";
 import env from "@/env";
-import { ZOD_ERROR_CODES, ZOD_ERROR_MESSAGES } from "@/lib/constants";
 import { omit } from "@/lib/omit-object";
 import { DAY } from "@/lib/time";
 
-import type { LoginRoute, RegisterRoute } from "./iam.routes";
+import type { LoginRoute, RegisterRoute } from "./routes";
 
 export const register: AppRouteHandler<RegisterRoute> = async (c) => {
   const user = c.req.valid("json");

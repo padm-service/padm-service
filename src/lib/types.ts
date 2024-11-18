@@ -9,6 +9,7 @@ export interface AppBindings {
   };
 };
 export type User = {
+  id: string;
   icon: string;
   balance: number;
   email: string;
