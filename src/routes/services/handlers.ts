@@ -5,10 +5,10 @@ import * as HttpStatusPhrases from "stoker/http-status-phrases";
 import type { AppRouteHandler } from "@/lib/types";
 
 import db from "@/db";
-import { Service } from "@/db/schema";
+import { Node, Service } from "@/db/schema";
 import { ZOD_ERROR_CODES, ZOD_ERROR_MESSAGES } from "@/lib/constants";
 
-import type { CreateRoute, GetRoute, ListRoute, PatchRoute, RemoveRoute } from "./routes";
+import type { CreateRoute, GetRoute, ListRoute, NodeCreateRoute, NodeGetRoute, NodeListRoute, NodePatchRoute, NodeRemoveRoute, PatchRoute, RemoveRoute } from "./routes";
 
 export const create: AppRouteHandler<CreateRoute> = async (c) => {
   const auth = c.get("auth");
@@ -102,4 +102,45 @@ export const remove: AppRouteHandler<RemoveRoute> = async (c) => {
     );
   }
   return c.body(null, HttpStatusCodes.NO_CONTENT);
+};
+
+export const nodeCreate: AppRouteHandler<NodeCreateRoute> = async (c) => {
+  const auth = c.get("auth");
+  const init = c.req.valid("json");
+  const userId = auth.user.id;
+  const [node] = await db.insert(Node).values({
+    ...init,
+    userId,
+  }).returning();
+  return c.json(node, HttpStatusCodes.OK);
+};
+
+export const nodeGet: AppRouteHandler<NodeGetRoute> = async (c) => {
+  const { id } = c.req.valid("param");
+  const node = await db.query.Node.findFirst({
+    where(fields, operators) {
+      return operators.eq(fields.id, id);
+    },
+  });
+  if (!node) {
+    return c.json(
+      {
+        message: HttpStatusPhrases.NOT_FOUND,
+      },
+      HttpStatusCodes.NOT_FOUND,
+    );
+  }
+  return c.json(node, HttpStatusCodes.OK);
+};
+
+export const nodeList: AppRouteHandler<NodeListRoute> = async (c) => {
+  const auth = c.get("auth");
+  const id = auth.user.id;
+  const services = await db.query.Service.findMany({
+    where(fields, operators) {
+      return operators.eq(fields.id, id);
+    },
+  },
+  );
+  return c.json(services);
 };

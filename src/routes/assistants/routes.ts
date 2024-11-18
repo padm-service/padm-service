@@ -1,7 +1,7 @@
 import { createRoute, z } from "@hono/zod-openapi";
 import * as HttpStatusCodes from "stoker/http-status-codes";
 import { jsonContent, jsonContentRequired } from "stoker/openapi/helpers";
-import { createErrorSchema, IdParamsSchema } from "stoker/openapi/schemas";
+import { createErrorSchema, IdUUIDParamsSchema } from "stoker/openapi/schemas";
 
 import { iAssistant, sAssistant, uAssistant } from "@/db/schema";
 import { notFoundSchema } from "@/lib/constants";
@@ -51,7 +51,7 @@ export const remove = createRoute({
   summary: "delete an assistant",
   description: "delete an assistant.",
   request: {
-    params: IdParamsSchema,
+    params: IdUUIDParamsSchema,
   },
   tags,
   responses: {
@@ -64,7 +64,7 @@ export const remove = createRoute({
       "Assistant not found",
     ),
     [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
-      createErrorSchema(IdParamsSchema),
+      createErrorSchema(IdUUIDParamsSchema),
       "The validation error(s)",
     ),
   },
@@ -75,7 +75,7 @@ export const patch = createRoute({
   summary: "update an assistant",
   description: "update an assistant.",
   request: {
-    params: IdParamsSchema,
+    params: IdUUIDParamsSchema,
     body: jsonContentRequired(
       uAssistant,
       "The assistant updates",
@@ -93,7 +93,7 @@ export const patch = createRoute({
     ),
     [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
       createErrorSchema(uAssistant)
-        .or(createErrorSchema(IdParamsSchema)),
+        .or(createErrorSchema(IdUUIDParamsSchema)),
       "The validation error(s)",
     ),
   },
@@ -102,7 +102,7 @@ export const get = createRoute({
   path: "/assistants/{id}",
   method: "get",
   request: {
-    params: IdParamsSchema,
+    params: IdUUIDParamsSchema,
   },
   tags,
   responses: {
@@ -115,7 +115,7 @@ export const get = createRoute({
       "Assistant not found",
     ),
     [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
-      createErrorSchema(IdParamsSchema),
+      createErrorSchema(IdUUIDParamsSchema),
       "Invalid id error",
     ),
   },

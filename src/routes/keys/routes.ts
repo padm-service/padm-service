@@ -1,7 +1,7 @@
 import { createRoute, z } from "@hono/zod-openapi";
 import * as HttpStatusCodes from "stoker/http-status-codes";
 import { jsonContent, jsonContentRequired } from "stoker/openapi/helpers";
-import { createErrorSchema, IdParamsSchema } from "stoker/openapi/schemas";
+import { createErrorSchema,IdUUIDParamsSchema } from "stoker/openapi/schemas";
 
 import { iKey, sKey } from "@/db/schema";
 import { notFoundSchema } from "@/lib/constants";
@@ -51,7 +51,7 @@ export const remove = createRoute({
   summary: "Revoke a key",
   description: "Revoke a key.",
   request: {
-    params: IdParamsSchema,
+    params: IdUUIDParamsSchema,
   },
   tags,
   responses: {
@@ -64,7 +64,7 @@ export const remove = createRoute({
       "Key not found",
     ),
     [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
-      createErrorSchema(IdParamsSchema),
+      createErrorSchema(IdUUIDParamsSchema),
       "The validation error(s)",
     ),
   },

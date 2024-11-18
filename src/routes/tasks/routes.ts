@@ -1,7 +1,7 @@
 import { createRoute, z } from "@hono/zod-openapi";
 import * as HttpStatusCodes from "stoker/http-status-codes";
 import { jsonContent, jsonContentRequired } from "stoker/openapi/helpers";
-import { createErrorSchema, IdParamsSchema } from "stoker/openapi/schemas";
+import { createErrorSchema, IdUUIDParamsSchema } from "stoker/openapi/schemas";
 
 import { insertTasksSchema, patchTasksSchema, selectTasksSchema } from "@/db/schema";
 import { notFoundSchema } from "@/lib/constants";
@@ -46,7 +46,7 @@ export const getOne = createRoute({
   path: "/tasks/{id}",
   method: "get",
   request: {
-    params: IdParamsSchema,
+    params: IdUUIDParamsSchema,
   },
   tags,
   responses: {
@@ -59,7 +59,7 @@ export const getOne = createRoute({
       "Task not found",
     ),
     [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
-      createErrorSchema(IdParamsSchema),
+      createErrorSchema(IdUUIDParamsSchema),
       "Invalid id error",
     ),
   },
@@ -69,7 +69,7 @@ export const patch = createRoute({
   path: "/tasks/{id}",
   method: "patch",
   request: {
-    params: IdParamsSchema,
+    params: IdUUIDParamsSchema,
     body: jsonContentRequired(
       patchTasksSchema,
       "The task updates",
@@ -87,7 +87,7 @@ export const patch = createRoute({
     ),
     [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
       createErrorSchema(patchTasksSchema)
-        .or(createErrorSchema(IdParamsSchema)),
+        .or(createErrorSchema(IdUUIDParamsSchema)),
       "The validation error(s)",
     ),
   },
@@ -97,7 +97,7 @@ export const remove = createRoute({
   path: "/tasks/{id}",
   method: "delete",
   request: {
-    params: IdParamsSchema,
+    params: IdUUIDParamsSchema,
   },
   tags,
   responses: {
@@ -109,7 +109,7 @@ export const remove = createRoute({
       "Task not found",
     ),
     [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
-      createErrorSchema(IdParamsSchema),
+      createErrorSchema(IdUUIDParamsSchema),
       "Invalid id error",
     ),
   },

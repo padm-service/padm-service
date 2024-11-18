@@ -1,12 +1,13 @@
 import { createRoute, z } from "@hono/zod-openapi";
 import * as HttpStatusCodes from "stoker/http-status-codes";
 import { jsonContent, jsonContentRequired } from "stoker/openapi/helpers";
-import { createErrorSchema, IdParamsSchema } from "stoker/openapi/schemas";
+import { createErrorSchema, IdUUIDParamsSchema } from "stoker/openapi/schemas";
 
-import { iService, sService, uService } from "@/db/schema";
+import { iNode, iService, sNode, sService, uNode, uService } from "@/db/schema";
 import { notFoundSchema } from "@/lib/constants";
 
-const tags = ["service"];
+
+const tags = ["service", "node"];
 
 export const list = createRoute({
   path: "/services/list",
@@ -51,7 +52,7 @@ export const remove = createRoute({
   summary: "delete a service",
   description: "delete a service.",
   request: {
-    params: IdParamsSchema,
+    params: IdUUIDParamsSchema,
   },
   tags,
   responses: {
@@ -64,7 +65,7 @@ export const remove = createRoute({
       "Service not found",
     ),
     [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
-      createErrorSchema(IdParamsSchema),
+      createErrorSchema(IdUUIDParamsSchema),
       "The validation error(s)",
     ),
   },
@@ -75,7 +76,7 @@ export const patch = createRoute({
   summary: "update an service",
   description: "update an service.",
   request: {
-    params: IdParamsSchema,
+    params: IdUUIDParamsSchema,
     body: jsonContentRequired(
       uService,
       "The service updates",
@@ -93,7 +94,7 @@ export const patch = createRoute({
     ),
     [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
       createErrorSchema(uService)
-        .or(createErrorSchema(IdParamsSchema)),
+        .or(createErrorSchema(IdUUIDParamsSchema)),
       "The validation error(s)",
     ),
   },
@@ -102,7 +103,7 @@ export const get = createRoute({
   path: "/services/{id}",
   method: "get",
   request: {
-    params: IdParamsSchema,
+    params: IdUUIDParamsSchema,
   },
   tags,
   responses: {
@@ -115,7 +116,124 @@ export const get = createRoute({
       "Service not found",
     ),
     [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
-      createErrorSchema(IdParamsSchema),
+      createErrorSchema(IdUUIDParamsSchema),
+      "Invalid id error",
+    ),
+  },
+});
+
+export const nodeList = createRoute({
+  path: "/services/{id}/nodes",
+  method: "get",
+  summary: "List nodes",
+  description: "List all node.",
+  tags,
+  request: {
+    params: IdUUIDParamsSchema,
+  },
+  responses: {
+    [HttpStatusCodes.OK]: jsonContent(
+      z.array(sNode),
+      "The list of node.",
+    ),
+  },
+});
+
+export const nodeCreate = createRoute({
+  path: "/services/{id}/nodes",
+  method: "post",
+  summary: "Create an node",
+  description: "Create an node.",
+  request: {
+    params: IdUUIDParamsSchema,
+    body: jsonContentRequired(
+      iNode,
+      "create node",
+    ),
+  },
+  tags,
+  responses: {
+    [HttpStatusCodes.OK]: jsonContent(
+      sNode,
+      "The  node object",
+    ),
+    [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
+      createErrorSchema(iNode),
+      "The validation error(s)",
+    ),
+  },
+});
+export const nodeRemove = createRoute({
+  path: "/services/{serviceId}/nodes/{nodeId}",
+  method: "delete",
+  summary: "delete a node",
+  description: "delete a node.",
+  request: {
+    params: IdUUIDParamsSchema,
+  },
+  tags,
+  responses: {
+    [HttpStatusCodes.OK]:
+    {
+      description: "node deleted",
+    },
+    [HttpStatusCodes.NOT_FOUND]: jsonContent(
+      notFoundSchema,
+      "Node not found",
+    ),
+    [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
+      createErrorSchema(IdUUIDParamsSchema),
+      "The validation error(s)",
+    ),
+  },
+});
+export const nodePatch = createRoute({
+  path: "/services/{serviceId}/nodes/{nodeId}",
+  method: "put",
+  summary: "update a node",
+  description: "update a node.",
+  request: {
+    params: IdUUIDParamsSchema,
+    body: jsonContentRequired(
+      uNode,
+      "The node updates",
+    ),
+  },
+  tags,
+  responses: {
+    [HttpStatusCodes.OK]: jsonContent(
+      sNode,
+      "The node updated",
+    ),
+    [HttpStatusCodes.NOT_FOUND]: jsonContent(
+      notFoundSchema,
+      "Node not found",
+    ),
+    [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
+      createErrorSchema(uNode)
+        .or(createErrorSchema(IdUUIDParamsSchema)),
+      "The validation error(s)",
+    ),
+  },
+});
+export const nodeGet = createRoute({
+  path: "/services/{serviceId}//nodes/{nodeId}",
+  method: "get",
+  request: {
+    params: IdUUIDParamsSchema,
+  },
+  tags,
+  responses: {
+    [HttpStatusCodes.OK]: jsonContent(
+      sNode,
+      "The requested node",
+    ),
+    [HttpStatusCodes.NOT_FOUND]: jsonContent(
+      notFoundSchema,
+      "Node not found",
+    ),
+    [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
+      createErrorSchema(IdUUIDParamsSchema),
       "Invalid id error",
     ),
   },
@@ -125,3 +243,8 @@ export type CreateRoute = typeof create;
 export type RemoveRoute = typeof remove;
 export type PatchRoute = typeof patch;
 export type GetRoute = typeof get;
+export type NodeListRoute = typeof nodeList;
+export type NodeCreateRoute = typeof nodeCreate;
+export type NodeRemoveRoute = typeof nodeRemove;
+export type NodePatchRoute = typeof nodePatch;
+export type NodeGetRoute = typeof nodeGet;
