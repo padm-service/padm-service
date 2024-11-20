@@ -10,5 +10,11 @@ const router = createRouter()
   .openapi(routes.patch, handlers.patch)
   .openapi(routes.remove, handlers.remove)
   .openapi(routes.nodeCreate, handlers.nodeCreate)
-  .openapi(routes.nodeGet, handlers.nodeGet);
+  .openapi(routes.nodeGet, handlers.nodeGet)
+  .openapi(routes.nodeList, handlers.nodeList)
+  .openapi(routes.nodePatch, handlers.nodePatch)
+  .openapi(routes.nodeRemove, handlers.nodeRemove)
+  .all("/:id/fetch/*", async (c) => {
+    await handlers.allService(c);
+  });
 export default router;

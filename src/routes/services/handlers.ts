@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import * as HttpStatusCodes from "stoker/http-status-codes";
 import * as HttpStatusPhrases from "stoker/http-status-phrases";
 
@@ -107,20 +107,24 @@ export const remove: AppRouteHandler<RemoveRoute> = async (c) => {
 export const nodeCreate: AppRouteHandler<NodeCreateRoute> = async (c) => {
   const auth = c.get("auth");
   const init = c.req.valid("json");
+  const { id } = c.req.valid("param");
+  const serviceId = id;
   const userId = auth.user.id;
   const [node] = await db.insert(Node).values({
     ...init,
     userId,
+    serviceId,
   }).returning();
   return c.json(node, HttpStatusCodes.OK);
 };
 
 export const nodeGet: AppRouteHandler<NodeGetRoute> = async (c) => {
-  const { id } = c.req.valid("param");
+  const { serviceId, nodeId } = c.req.valid("param");
   const node = await db.query.Node.findFirst({
-    where(fields, operators) {
-      return operators.eq(fields.id, id);
-    },
+    where: (fields, operators) => operators.and(
+      operators.eq(fields.serviceId, serviceId),
+      operators.eq(fields.id, nodeId),
+    ),
   });
   if (!node) {
     return c.json(
@@ -136,11 +140,73 @@ export const nodeGet: AppRouteHandler<NodeGetRoute> = async (c) => {
 export const nodeList: AppRouteHandler<NodeListRoute> = async (c) => {
   const auth = c.get("auth");
   const id = auth.user.id;
-  const services = await db.query.Service.findMany({
+  const services = await db.query.Node.findMany({
     where(fields, operators) {
-      return operators.eq(fields.id, id);
+      return operators.eq(fields.serviceId, id);
     },
   },
   );
   return c.json(services);
+};
+
+export const nodePatch: AppRouteHandler<NodePatchRoute> = async (c) => {
+  const { serviceId, nodeId } = c.req.valid("param");
+  const updates = c.req.valid("json");
+
+  if (Object.keys(updates).length === 0) {
+    return c.json(
+      {
+        success: false,
+        error: {
+          issues: [
+            {
+              code: ZOD_ERROR_CODES.INVALID_UPDATES,
+              path: [],
+              message: ZOD_ERROR_MESSAGES.NO_UPDATES,
+            },
+          ],
+          name: "ZodError",
+        },
+      },
+      HttpStatusCodes.UNPROCESSABLE_ENTITY,
+    );
+  }
+
+  const [service] = await db.update(Node)
+    .set(updates)
+    .where(and(eq(Node.serviceId, serviceId), eq(Node.id, nodeId)))
+    .returning();
+
+  if (!service) {
+    return c.json(
+      {
+        message: HttpStatusPhrases.NOT_FOUND,
+      },
+      HttpStatusCodes.NOT_FOUND,
+    );
+  }
+
+  return c.json(service, HttpStatusCodes.OK);
+};
+
+export const nodeRemove: AppRouteHandler<NodeRemoveRoute> = async (c) => {
+  const { serviceId, nodeId } = c.req.valid("param");
+  const result = await db.delete(Service)
+    .where(and(eq(Node.serviceId, serviceId), eq(Node.id, nodeId)));
+  if (result.rowsAffected === 0) {
+    return c.json(
+      {
+        message: HttpStatusPhrases.NOT_FOUND,
+      },
+      HttpStatusCodes.NOT_FOUND,
+    );
+  }
+  return c.body(null, HttpStatusCodes.NO_CONTENT);
+};
+
+export const allService: any = (c: any) => {
+  const auth = c.get("auth");
+  const { id } = c.params; // 从ctx.params中获取id
+  const userId = auth ? auth.user.id : null;
+  return c.json({ id, userId });
 };

@@ -19,7 +19,7 @@ export const register: AppRouteHandler<RegisterRoute> = async (c) => {
   user.secret = await argon2.hash(user.secret);
   const users = await db.query.User.findFirst({
     where(fields, operators) {
-      return operators.eq(fields.email, user.email);
+      return operators.or(eq(fields.email, user.email), eq(fields.name, user.name));
     },
   });
   if (users) {

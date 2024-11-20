@@ -18,7 +18,7 @@ export const list: AppRouteHandler<ListRoute> = async (c) => {
   const id = auth.user.id;
   const keys = await db.query.Key.findMany({
     where(fields, operators) {
-      return operators.eq(fields.id, id);
+      return operators.eq(fields.userId, id);
     },
   },
   );

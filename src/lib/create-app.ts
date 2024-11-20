@@ -33,6 +33,7 @@ export default function createApp() {
   app.use(pinoLogger());
   app.use(cors());
   app.use(
+    "/*",
     auth({
       apikey: "x-api-key",
       secret: async () => env.TOKEN_SECRET!,

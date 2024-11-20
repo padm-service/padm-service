@@ -3,11 +3,14 @@ import { createId } from "@paralleldrive/cuid2";
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 
+import { omit } from "@/lib/omit-object";
+
 export const Base = {
   id: text("id").$defaultFn(() => createId()).primaryKey(),
   created_at: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
   updated_at: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()).$onUpdate(() => new Date()),
 };
+export const MsgBase = omit(Base, ["updated_at"]);
 // tasks Table
 export const tasks = sqliteTable("tasks", {
   id: integer("id", { mode: "number" })
@@ -43,7 +46,7 @@ export const patchTasksSchema = insertTasksSchema.partial();
 // User Table
 export const User = sqliteTable("user", {
   ...Base,
-  name: text("name"),
+  name: text("name").notNull(),
   icon: text("icon").notNull().default("😊"),
   balance: integer("balance").notNull().default(0),
   email: text("email").notNull(),
@@ -53,7 +56,7 @@ export const User = sqliteTable("user", {
   scope: text("scope").notNull().default("user"),
   secret: text("secret").notNull(),
 });
-
+export type Users = typeof User.$inferSelect;
 export const selectUser = createSelectSchema(User);
 
 export const insertUser = createInsertSchema(User,
@@ -118,15 +121,31 @@ export const iChat = createInsertSchema(Chat).omit({
 });
 
 export const uChat = iChat.partial();
+// Msg Table
 
+export const Msg = sqliteTable("msg", {
+  ...MsgBase,
+  content: text("content"),
+  role: text("role"),
+  chatId: text("chatId"),
+  userId: text("userId"),
+});
+export const sMsg = createSelectSchema(Msg);
+
+export const iMsg = createInsertSchema(Msg).omit({
+  id: true,
+  created_at: true,
+});
+
+export const uMsg = iMsg.partial();
 // Assistance Table
 export const Assistant = sqliteTable("assistance", {
   ...Base,
-  name: text("name"),
+  name: text("name").notNull(),
   icon: text("icon").notNull().default("🌐"),
-  description: text("description"),
+  description: text("description").notNull(),
   knowledge: text("knowledge"),
-  level: text("level"),
+  level: integer("level").notNull().default(1),
   userId: text("userId"),
   services: text("services", { mode: "json" }),
 });
@@ -164,7 +183,7 @@ export const Service = sqliteTable("service", {
   level: text("level").notNull(),
   schema: text("schema", { mode: "json" }),
   tools: text("tools", { mode: "json" }).default("[]"),
-  unit_price: integer("unit_price"),
+  unit_price: integer("unit_price").notNull(),
   userId: text("userId"),
 });
 export const sService = createSelectSchema(Service).extend({
@@ -182,6 +201,7 @@ export const iService = createInsertSchema(Service).omit({
 });
 export const uService = iService.partial();
 
+// Node Table
 export const Node = sqliteTable("node", {
   ...Base,
   serviceId: text("serviceId"),
@@ -198,3 +218,24 @@ export const iNode = createInsertSchema(Node).omit({
   updated_at: true,
 });
 export const uNode = iNode.partial();
+
+// File Table
+export const File = sqliteTable("file", {
+  ...Base,
+  userId: text("userId"),
+  type: text("type"),
+  object_key: text("object_key"),
+  state: text("state"),
+  pre_signed_url: text("pre_signed_url"),
+  size: integer("size"),
+  method: text("method", { enum: ["GET", "PUT"] }).notNull(),
+  name: text("name"),
+});
+export const sFile = createSelectSchema(File);
+
+export const iFile = createInsertSchema(File).omit({
+  id: true,
+  created_at: true,
+  updated_at: true,
+});
+export const uFile = iFile.partial();

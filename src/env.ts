@@ -18,6 +18,10 @@ const EnvSchema = z.object({
   DATABASE_URL: z.string().url(),
   DATABASE_AUTH_TOKEN: z.string().optional(),
   TOKEN_SECRET: z.string(),
+  COS_SECRET_ID: z.string(),
+  COS_SECRET_KEY: z.string(),
+  COS_REGION: z.string(),
+  COS_BUCKET: z.string(),
 }).superRefine((input, ctx) => {
   if (input.NODE_ENV === "production" && !input.DATABASE_AUTH_TOKEN) {
     ctx.addIssue({

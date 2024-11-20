@@ -3,17 +3,18 @@ import * as HttpStatusCodes from "stoker/http-status-codes";
 import { jsonContent, jsonContentRequired } from "stoker/openapi/helpers";
 import { createErrorSchema, IdUUIDParamsSchema } from "stoker/openapi/schemas";
 
-import { iAssistant, sAssistant, uAssistant } from "@/db/schema";
+import { iAssistant, iChat, sAssistant, sChat, uAssistant, uChat } from "@/db/schema";
 import { notFoundSchema } from "@/lib/constants";
 
-const tags = ["assistant"];
+const assTags = ["assistant"];
+const chatTags = ["chat"];
 
 export const list = createRoute({
-  path: "/assistants/list",
+  path: "/assistants",
   method: "get",
   summary: "List assistant",
   description: "List all assistant.",
-  tags,
+  tags: assTags,
   responses: {
     [HttpStatusCodes.OK]: jsonContent(
       z.array(sAssistant),
@@ -33,7 +34,7 @@ export const create = createRoute({
       "create assistant",
     ),
   },
-  tags,
+  tags: assTags,
   responses: {
     [HttpStatusCodes.OK]: jsonContent(
       sAssistant,
@@ -53,7 +54,7 @@ export const remove = createRoute({
   request: {
     params: IdUUIDParamsSchema,
   },
-  tags,
+  tags: assTags,
   responses: {
     [HttpStatusCodes.OK]:
     {
@@ -81,7 +82,7 @@ export const patch = createRoute({
       "The assistant updates",
     ),
   },
-  tags,
+  tags: assTags,
   responses: {
     [HttpStatusCodes.OK]: jsonContent(
       sAssistant,
@@ -104,7 +105,7 @@ export const get = createRoute({
   request: {
     params: IdUUIDParamsSchema,
   },
-  tags,
+  tags: assTags,
   responses: {
     [HttpStatusCodes.OK]: jsonContent(
       sAssistant,
@@ -120,8 +121,87 @@ export const get = createRoute({
     ),
   },
 });
+
+export const chatGet = createRoute({
+  path: "/assistants/{assistantId}/chats/{chatId}",
+  method: "get",
+  summary: "Get a chat",
+  description: "Get a chat.",
+  request: {
+    params: z.object({
+      assistantId: z.string(),
+      chatId: z.string(),
+    }),
+  },
+  tags: chatTags,
+  responses: {
+    [HttpStatusCodes.OK]: jsonContent(
+      sChat,
+      "The chat object",
+    ),
+    [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
+      createErrorSchema(iAssistant),
+      "The validation error(s)",
+    ),
+  },
+});
+
+export const chatCreate = createRoute({
+  path: "/assistants/{id}/chats",
+  method: "post",
+  summary: "Create a chat",
+  description: "Create a chat.",
+  request: {
+    body: jsonContentRequired(
+      iChat,
+      "create assistant",
+    ),
+  },
+  tags: chatTags,
+  responses: {
+    [HttpStatusCodes.OK]: jsonContent(
+      sChat,
+      "The assistant object",
+    ),
+    [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
+      createErrorSchema(iChat),
+      "The validation error(s)",
+    ),
+  },
+});
+export const chatRemove = createRoute({
+  path: "/assistants/{assistantId}/chats/{chatId}",
+  method: "delete",
+  summary: "delete a chat",
+  description: "delete a chat.",
+  request: {
+    params: z.object({
+      assistantId: z.string(),
+      chatId: z.string(),
+    }),
+  },
+  tags: assTags,
+  responses: {
+    [HttpStatusCodes.OK]:
+    {
+      description: "chat deleted",
+    },
+    [HttpStatusCodes.NOT_FOUND]: jsonContent(
+      notFoundSchema,
+      "Chat not found",
+    ),
+    [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
+      createErrorSchema(IdUUIDParamsSchema),
+      "The validation error(s)",
+    ),
+  },
+});
 export type ListRoute = typeof list;
 export type CreateRoute = typeof create;
 export type RemoveRoute = typeof remove;
 export type PatchRoute = typeof patch;
 export type GetRoute = typeof get;
+export type ChatCreateRoute = typeof chatCreate;
+// export type ChatListRoute = typeof chatList;
+export type ChatRemoveRoute = typeof chatRemove;
+export type ChatGetRoute = typeof chatGet;

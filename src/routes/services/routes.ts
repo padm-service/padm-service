@@ -6,15 +6,14 @@ import { createErrorSchema, IdUUIDParamsSchema } from "stoker/openapi/schemas";
 import { iNode, iService, sNode, sService, uNode, uService } from "@/db/schema";
 import { notFoundSchema } from "@/lib/constants";
 
-
-const tags = ["service", "node"];
-
+const serviceTags = ["service"];
+const nodeTags = ["node"];
 export const list = createRoute({
-  path: "/services/list",
+  path: "/services",
   method: "get",
   summary: "List service",
   description: "List all service.",
-  tags,
+  tags: serviceTags,
   responses: {
     [HttpStatusCodes.OK]: jsonContent(
       z.array(sService),
@@ -34,7 +33,7 @@ export const create = createRoute({
       "create service",
     ),
   },
-  tags,
+  tags: serviceTags,
   responses: {
     [HttpStatusCodes.OK]: jsonContent(
       sService,
@@ -54,7 +53,7 @@ export const remove = createRoute({
   request: {
     params: IdUUIDParamsSchema,
   },
-  tags,
+  tags: serviceTags,
   responses: {
     [HttpStatusCodes.OK]:
     {
@@ -82,7 +81,7 @@ export const patch = createRoute({
       "The service updates",
     ),
   },
-  tags,
+  tags: serviceTags,
   responses: {
     [HttpStatusCodes.OK]: jsonContent(
       sService,
@@ -99,13 +98,16 @@ export const patch = createRoute({
     ),
   },
 });
+
 export const get = createRoute({
   path: "/services/{id}",
   method: "get",
+  summary: "get a service",
+  description: "get a service.",
   request: {
     params: IdUUIDParamsSchema,
   },
-  tags,
+  tags: serviceTags,
   responses: {
     [HttpStatusCodes.OK]: jsonContent(
       sService,
@@ -127,7 +129,7 @@ export const nodeList = createRoute({
   method: "get",
   summary: "List nodes",
   description: "List all node.",
-  tags,
+  tags: nodeTags,
   request: {
     params: IdUUIDParamsSchema,
   },
@@ -151,7 +153,7 @@ export const nodeCreate = createRoute({
       "create node",
     ),
   },
-  tags,
+  tags: nodeTags,
   responses: {
     [HttpStatusCodes.OK]: jsonContent(
       sNode,
@@ -169,9 +171,12 @@ export const nodeRemove = createRoute({
   summary: "delete a node",
   description: "delete a node.",
   request: {
-    params: IdUUIDParamsSchema,
+    params: z.object({
+      serviceId: z.string({ description: "service ID" }),
+      nodeId: z.string({ description: "node ID." }),
+    }),
   },
-  tags,
+  tags: nodeTags,
   responses: {
     [HttpStatusCodes.OK]:
     {
@@ -193,13 +198,16 @@ export const nodePatch = createRoute({
   summary: "update a node",
   description: "update a node.",
   request: {
-    params: IdUUIDParamsSchema,
+    params: z.object({
+      serviceId: z.string({ description: "service ID" }),
+      nodeId: z.string({ description: "node ID." }),
+    }),
     body: jsonContentRequired(
       uNode,
       "The node updates",
     ),
   },
-  tags,
+  tags: nodeTags,
   responses: {
     [HttpStatusCodes.OK]: jsonContent(
       sNode,
@@ -217,12 +225,17 @@ export const nodePatch = createRoute({
   },
 });
 export const nodeGet = createRoute({
-  path: "/services/{serviceId}//nodes/{nodeId}",
+  path: "/services/{serviceId}/nodes/{nodeId}",
   method: "get",
+  summary: "get a node",
+  description: "get a node.",
   request: {
-    params: IdUUIDParamsSchema,
+    params: z.object({
+      serviceId: z.string({ description: "service ID" }),
+      nodeId: z.string({ description: "node ID." }),
+    }),
   },
-  tags,
+  tags: nodeTags,
   responses: {
     [HttpStatusCodes.OK]: jsonContent(
       sNode,

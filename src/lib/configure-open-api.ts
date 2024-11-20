@@ -11,6 +11,11 @@ export default function configureOpenAPI(app: AppOpenAPI) {
       version: packageJSON.version,
       title: "Halo API",
     },
+    servers: [
+      {
+        url: "http://localhost:9999",
+      },
+    ],
   });
 
   app.get(

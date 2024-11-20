@@ -32,7 +32,7 @@ export function auth(opts: Options): MiddlewareHandler {
   }
 
   return async function (ctx, next) {
-    if (ctx.req.path.includes("user"))
+    if (ctx.req.path.includes("iam"))
       await next();
     const creds = ctx.req.header("Authorization");
     let token;
