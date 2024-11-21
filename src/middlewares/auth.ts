@@ -1,11 +1,14 @@
 import type { Context, MiddlewareHandler } from "hono";
 
+import argon2 from "argon2";
 import { getCookie } from "hono/cookie";
 import { HTTPException } from "hono/http-exception";
 import { Jwt } from "hono/utils/jwt";
 import * as HttpStatusCodes from "stoker/http-status-codes";
 
 import type { User } from "@/lib/types";
+
+import db from "@/db";
 
 type Auth = {
   user: User;
@@ -53,7 +56,6 @@ export function auth(opts: Options): MiddlewareHandler {
     if (!token && opts.cookie) {
       token = getCookie(ctx, opts.cookie);
     }
-
     if (!token && opts.apikey) {
       // exchange token with apikey
       token = await exchange(ctx, ctx.req.header(opts.apikey));
@@ -97,7 +99,31 @@ async function exchange(ctx: Context, key?: string) {
       res: unauthorized(ctx, "Bad API Key!"),
     });
   };
-  return "token";
+  const tokens = await db.transaction(async (tx) => {
+    const k2t = await tx.query.K2t.findFirst({
+      where(fields, operators) {
+        return operators.eq(fields.keyId, slices[1]);
+      },
+    });
+    const key = await tx.query.Key.findFirst({
+      where(fields, operators) {
+        return operators.eq(fields.id, slices[1]);
+      },
+    });
+    if (key && k2t && await argon2.verify(key.secret, slices[2])) {
+      return {
+        services: key.services,
+        token: k2t?.token,
+      };
+    }
+    else {
+      throw new HTTPException(401, {
+        res: unauthorized(ctx, "Not available this Key!"),
+      });
+    }
+  });
+
+  return tokens.token;
 }
 export function unauthorized(ctx: Context, message: string) {
   return Response.json(

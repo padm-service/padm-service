@@ -51,7 +51,9 @@ export const remove = createRoute({
   summary: "delete a service",
   description: "delete a service.",
   request: {
-    params: IdUUIDParamsSchema,
+    params: z.object({
+      id: z.string(),
+    }),
   },
   tags: serviceTags,
   responses: {
@@ -75,7 +77,9 @@ export const patch = createRoute({
   summary: "update an service",
   description: "update an service.",
   request: {
-    params: IdUUIDParamsSchema,
+    params: z.object({
+      id: z.string(),
+    }),
     body: jsonContentRequired(
       uService,
       "The service updates",
@@ -105,7 +109,9 @@ export const get = createRoute({
   summary: "get a service",
   description: "get a service.",
   request: {
-    params: IdUUIDParamsSchema,
+    params: z.object({
+      id: z.string(),
+    }),
   },
   tags: serviceTags,
   responses: {
@@ -131,7 +137,9 @@ export const nodeList = createRoute({
   description: "List all node.",
   tags: nodeTags,
   request: {
-    params: IdUUIDParamsSchema,
+    params: z.object({
+      id: z.string(),
+    }),
   },
   responses: {
     [HttpStatusCodes.OK]: jsonContent(
@@ -147,7 +155,9 @@ export const nodeCreate = createRoute({
   summary: "Create an node",
   description: "Create an node.",
   request: {
-    params: IdUUIDParamsSchema,
+    params: z.object({
+      id: z.string(),
+    }),
     body: jsonContentRequired(
       iNode,
       "create node",

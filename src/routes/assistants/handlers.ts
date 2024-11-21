@@ -40,10 +40,9 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
 
 export const list: AppRouteHandler<ListRoute> = async (c) => {
   const auth = c.get("auth");
-  const id = auth.user.id;
   const assistants = await db.query.Assistant.findMany({
     where(fields, operators) {
-      return operators.eq(fields.id, id);
+      return operators.eq(fields.userId, auth.user.id);
     },
   },
   );

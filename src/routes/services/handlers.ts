@@ -40,10 +40,9 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
 
 export const list: AppRouteHandler<ListRoute> = async (c) => {
   const auth = c.get("auth");
-  const id = auth.user.id;
   const services = await db.query.Service.findMany({
     where(fields, operators) {
-      return operators.eq(fields.id, id);
+      return operators.eq(fields.userId, auth.user.id);
     },
   },
   );
@@ -138,8 +137,7 @@ export const nodeGet: AppRouteHandler<NodeGetRoute> = async (c) => {
 };
 
 export const nodeList: AppRouteHandler<NodeListRoute> = async (c) => {
-  const auth = c.get("auth");
-  const id = auth.user.id;
+  const { id } = c.req.valid("param");
   const services = await db.query.Node.findMany({
     where(fields, operators) {
       return operators.eq(fields.serviceId, id);

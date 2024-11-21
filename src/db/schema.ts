@@ -84,7 +84,7 @@ export const Key = sqliteTable("key", {
   services: text("services", { mode: "json" }).notNull(),
   userId: text("userId").notNull(),
 });
-
+export type Keys = typeof Key.$inferSelect;
 export const sKey = createSelectSchema(Key).extend({
   services: z.array(z.string()),
 });
@@ -168,11 +168,10 @@ export const uAssistant = iAssistant.partial();
 // K2t Table
 export const K2t = sqliteTable("k2t", {
   id: text("id").$defaultFn(() => createId()).primaryKey(),
-  key: text("key").notNull(),
+  keyId: text("keyId").notNull(),
   token: text("token").notNull(),
 });
 export const sK2t = createSelectSchema(K2t);
-
 export const iK2t = createInsertSchema(K2t).omit({
   id: true,
 });
@@ -204,11 +203,11 @@ export const uService = iService.partial();
 // Node Table
 export const Node = sqliteTable("node", {
   ...Base,
-  serviceId: text("serviceId"),
-  userId: text("userId"),
-  state: text("state"),
-  url: text("url"),
-  name: text("name"),
+  serviceId: text("serviceId").notNull(),
+  userId: text("userId").notNull(),
+  state: text("state").notNull(),
+  url: text("url").notNull(),
+  name: text("name").notNull(),
 });
 export const sNode = createSelectSchema(Node);
 

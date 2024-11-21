@@ -63,7 +63,9 @@ export const remove = createRoute({
   description: "Delete a file",
   tags,
   request: {
-    params: IdUUIDParamsSchema,
+    params: z.object({
+      id: z.string(),
+    }),
   },
   responses: {
     [HttpStatusCodes.OK]:

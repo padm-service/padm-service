@@ -52,7 +52,9 @@ export const remove = createRoute({
   summary: "delete an assistant",
   description: "delete an assistant.",
   request: {
-    params: IdUUIDParamsSchema,
+    params: z.object({
+      id: z.string(),
+    }),
   },
   tags: assTags,
   responses: {
@@ -76,7 +78,9 @@ export const patch = createRoute({
   summary: "update an assistant",
   description: "update an assistant.",
   request: {
-    params: IdUUIDParamsSchema,
+    params: z.object({
+      id: z.string(),
+    }),
     body: jsonContentRequired(
       uAssistant,
       "The assistant updates",
@@ -103,7 +107,9 @@ export const get = createRoute({
   path: "/assistants/{id}",
   method: "get",
   request: {
-    params: IdUUIDParamsSchema,
+    params: z.object({
+      id: z.string(),
+    }),
   },
   tags: assTags,
   responses: {

@@ -51,7 +51,9 @@ export const remove = createRoute({
   summary: "Revoke a key",
   description: "Revoke a key.",
   request: {
-    params: IdUUIDParamsSchema,
+    params: z.object({
+      id: z.string(),
+    }),
   },
   tags,
   responses: {

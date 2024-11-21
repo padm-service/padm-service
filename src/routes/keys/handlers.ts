@@ -1,8 +1,10 @@
+import argon2 from "argon2";
 import { eq } from "drizzle-orm";
 import { Jwt } from "hono/utils/jwt";
 import * as HttpStatusCodes from "stoker/http-status-codes";
 import * as HttpStatusPhrases from "stoker/http-status-phrases";
 
+import type { Keys } from "@/db/schema";
 import type { AppRouteHandler, User } from "@/lib/types";
 
 import db from "@/db";
@@ -30,21 +32,26 @@ export const create: AppRouteHandler<CreateRoute> = async (c) => {
   const init = c.req.valid("json");
   const prefix = "sk";
   const seed = crypto.randomUUID();
-  const secret = hexify(await digest("sha-1", seed));
-  const secret_truncated = secret.slice(-4);
+  const real_secret = hexify(await digest("sha-1", seed));
+  const secret_truncated = real_secret.slice(-4);
+  const secret = await argon2.hash(real_secret);
   const userId = auth.user.id;
-  console.log(init);
-
-  const [key] = await db.insert(Key).values({
-    ...init,
-    prefix,
-    secret,
-    secret_truncated,
-    userId,
-  }).returning();
-  const keyId = key.id;
-  await persistant_token(auth.user, keyId);
-  const key_onetime = `${key.prefix}-${key.id.slice("key:".length)}-${key.secret}`;
+  const token_surrealdb = await persistant_token(auth.user);
+  const key: Keys = await db.transaction(async (tx) => {
+    const [key] = await tx.insert(Key).values({
+      ...init,
+      prefix,
+      secret,
+      secret_truncated,
+      userId,
+    }).returning();
+    await tx.insert(K2t).values({
+      keyId: key.id,
+      token: token_surrealdb,
+    });
+    return key;
+  });
+  const key_onetime = `${key.prefix}-${key.id}-${real_secret}`;
   return c.json(key_onetime, HttpStatusCodes.OK);
 };
 
@@ -63,9 +70,9 @@ export const remove: AppRouteHandler<RemoveRoute> = async (c) => {
   return c.body(null, HttpStatusCodes.NO_CONTENT);
 };
 
-async function persistant_token(user: User, key: string) {
+async function persistant_token(user: User) {
   const expiry = Date.now() + 356 * 100 * DAY; // 100 years is enough :)
-  const token = await Jwt.sign(
+  return await Jwt.sign(
     {
       iss: "halo.dev",
       exp: Math.floor(expiry / 1000),
@@ -74,8 +81,4 @@ async function persistant_token(user: User, key: string) {
     },
     env.TOKEN_SECRET!,
   );
-  await db.insert(K2t).values({
-    key,
-    token,
-  });
 }
