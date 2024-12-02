@@ -3,7 +3,7 @@ import * as HttpStatusCodes from "stoker/http-status-codes";
 import { jsonContent, jsonContentRequired } from "stoker/openapi/helpers";
 import { createErrorSchema, IdUUIDParamsSchema } from "stoker/openapi/schemas";
 
-import { iAssistant, iChat, sAssistant, sChat, uAssistant, uChat } from "@/db/schema";
+import { iAssistant, iChat, iMsg, sAssistant, sChat, sMsg, uAssistant, uChat } from "@/db/schema";
 import { notFoundSchema } from "@/lib/constants";
 
 const assTags = ["assistant"];
@@ -79,7 +79,7 @@ export const patch = createRoute({
   description: "update an assistant.",
   request: {
     params: z.object({
-      id: z.string(),
+      id: z.string({ description: "assistant id" }),
     }),
     body: jsonContentRequired(
       uAssistant,
@@ -108,7 +108,7 @@ export const get = createRoute({
   method: "get",
   request: {
     params: z.object({
-      id: z.string(),
+      id: z.string({ description: "assistant id" }),
     }),
   },
   tags: assTags,
@@ -135,29 +135,32 @@ export const chatGet = createRoute({
   description: "Get a chat.",
   request: {
     params: z.object({
-      assistantId: z.string(),
-      chatId: z.string(),
+      assistantId: z.string({ description: "assistant id" }),
+      chatId: z.string({ description: "chat id" }),
     }),
   },
   tags: chatTags,
   responses: {
     [HttpStatusCodes.OK]: jsonContent(
-      sChat,
-      "The chat object",
+      z.array(sMsg),
+      "The msg object",
     ),
     [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
-      createErrorSchema(iAssistant),
+      createErrorSchema(IdUUIDParamsSchema),
       "The validation error(s)",
     ),
   },
 });
 
 export const chatCreate = createRoute({
-  path: "/assistants/{id}/chats",
+  path: "/assistants/{assistantId}/chats",
   method: "post",
   summary: "Create a chat",
   description: "Create a chat.",
   request: {
+    params: z.object({
+      assistantId: z.string({ description: "assistant id" }),
+    }),
     body: jsonContentRequired(
       iChat,
       "create assistant",
@@ -175,6 +178,7 @@ export const chatCreate = createRoute({
     ),
   },
 });
+
 export const chatRemove = createRoute({
   path: "/assistants/{assistantId}/chats/{chatId}",
   method: "delete",
@@ -182,15 +186,72 @@ export const chatRemove = createRoute({
   description: "delete a chat.",
   request: {
     params: z.object({
-      assistantId: z.string(),
-      chatId: z.string(),
+      assistantId: z.string({ description: "assistant id" }),
+      chatId: z.string({ description: "chat id" }),
     }),
   },
-  tags: assTags,
+  tags: chatTags,
   responses: {
     [HttpStatusCodes.OK]:
     {
       description: "chat deleted",
+    },
+    [HttpStatusCodes.NOT_FOUND]: jsonContent(
+      notFoundSchema,
+      "Chat not found",
+    ),
+    [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
+      createErrorSchema(IdUUIDParamsSchema),
+      "The validation error(s)",
+    ),
+  },
+});
+export const chatList = createRoute({
+  path: "/assistants/{id}/chats",
+  method: "get",
+  summary: "List chat",
+  description: "List all assistant.",
+  request: {
+    params: z.object({
+      id: z.string({ description: "assistant id" }),
+    }),
+  },
+  tags: chatTags,
+  responses: {
+    [HttpStatusCodes.OK]: jsonContent(
+      z.array(sAssistant),
+      "The list of assistant.",
+    ),
+  },
+});
+
+export const chatQuery = createRoute({
+  path: "/assistants/{assistantId}/chats/query",
+  method: "post",
+  summary: "Generate a chat",
+  description: "Generate outputs with optional services or knowledge.",
+  request: {
+    params: z.object({
+      assistantId: z.string({ description: "assistant id" }),
+    }),
+    body: jsonContentRequired(
+      iMsg,
+      "query json param",
+    ),
+  },
+  tags: chatTags,
+  responses: {
+    [HttpStatusCodes.OK]:
+    {
+      description: "chat Generate",
+      content: {
+        "application/json": {
+          schema: sMsg,
+        },
+        "text/event-stream": {
+          schema: sMsg,
+        },
+      },
     },
     [HttpStatusCodes.NOT_FOUND]: jsonContent(
       notFoundSchema,
@@ -208,6 +269,7 @@ export type RemoveRoute = typeof remove;
 export type PatchRoute = typeof patch;
 export type GetRoute = typeof get;
 export type ChatCreateRoute = typeof chatCreate;
-// export type ChatListRoute = typeof chatList;
+export type ChatListRoute = typeof chatList;
 export type ChatRemoveRoute = typeof chatRemove;
 export type ChatGetRoute = typeof chatGet;
+export type ChatQueryRoute = typeof chatQuery;

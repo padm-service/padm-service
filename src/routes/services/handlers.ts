@@ -8,7 +8,7 @@ import db from "@/db";
 import { Node, Service } from "@/db/schema";
 import { ZOD_ERROR_CODES, ZOD_ERROR_MESSAGES } from "@/lib/constants";
 
-import type { CreateRoute, GetRoute, ListRoute, NodeCreateRoute, NodeGetRoute, NodeListRoute, NodePatchRoute, NodeRemoveRoute, PatchRoute, RemoveRoute } from "./routes";
+import type { CreateRoute, GetReadmeRoute, GetRoute, GetSchemaRoute, ListRoute, NodeCreateRoute, NodeGetRoute, NodeListRoute, NodePatchRoute, NodeRemoveRoute, PatchRoute, RemoveRoute } from "./routes";
 
 export const create: AppRouteHandler<CreateRoute> = async (c) => {
   const auth = c.get("auth");
@@ -201,7 +201,31 @@ export const nodeRemove: AppRouteHandler<NodeRemoveRoute> = async (c) => {
   }
   return c.body(null, HttpStatusCodes.NO_CONTENT);
 };
+export const getSchema: AppRouteHandler<GetSchemaRoute> = async (c) => {
+  const { id } = c.req.valid("param");
+  const schema = await db.query.Service.findFirst({
+    columns: {
+      schema: true,
+    },
+    where(fields, operators) {
+      return operators.eq(fields.id, id);
+    },
+  });
+  return c.json(schema, HttpStatusCodes.OK);
+};
 
+export const getReadme: AppRouteHandler<GetReadmeRoute> = async (c) => {
+  const { id } = c.req.valid("param");
+  const result = await db.query.Service.findFirst({
+    columns: {
+      readme: true,
+    },
+    where(fields, operators) {
+      return operators.eq(fields.id, id);
+    },
+  });
+  return c.text(result?.readme ?? "", HttpStatusCodes.OK);
+};
 export const allService: any = (c: any) => {
   const auth = c.get("auth");
   const { id } = c.params; // 从ctx.params中获取id

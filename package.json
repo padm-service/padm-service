@@ -15,6 +15,8 @@
   "dependencies": {
     "@hono/node-server": "^1.13.2",
     "@hono/zod-openapi": "^0.16.4",
+    "@langchain/community": "^0.3.15",
+    "@langchain/core": "^0.3.18",
     "@libsql/client": "^0.14.0",
     "@paralleldrive/cuid2": "^2.2.2",
     "@scalar/hono-api-reference": "^0.5.156",
@@ -26,6 +28,7 @@
     "drizzle-zod": "^0.5.1",
     "hono": "^4.6.6",
     "hono-pino": "^0.4.0",
+    "langchain": "^0.3.6",
     "pino": "^9.5.0",
     "pino-pretty": "^11.3.0",
     "stoker": "^1.2.7",

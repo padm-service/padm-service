@@ -261,6 +261,63 @@ export const nodeGet = createRoute({
     ),
   },
 });
+
+export const getSchema = createRoute({
+  method: "get",
+  path: "/services/{id}/schema",
+  summary: "Get a service schema",
+  description: "Get a service schema you have ownership or verfied access to.",
+  serviceTags,
+  request: {
+    params: z.object({
+      id: z.string({ description: "service Id" }),
+    }),
+  },
+  responses: {
+    [HttpStatusCodes.OK]: jsonContent(
+      z.object({}, { description: "OpenAPI v3.0.3 object." }),
+      "The OpenAPI v3.0.0 schema object.",
+    ),
+    [HttpStatusCodes.NOT_FOUND]: jsonContent(
+      notFoundSchema,
+      "Service not found",
+    ),
+    [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
+      createErrorSchema(IdUUIDParamsSchema),
+      "Invalid id error",
+    ),
+  },
+});
+export const getReadme = createRoute({
+  method: "get",
+  path: "/services/{id}/readme",
+  summary: "Get a service readme",
+  description: "Get a service readme you have ownership or verfied access to.",
+  serviceTags,
+  request: {
+    params: z.object({
+      id: z.string({ description: "service Id" }),
+    }),
+  },
+  responses: {
+    [HttpStatusCodes.OK]: {
+      description: "The service readme in Markdown format.",
+      content: {
+        "text/plain": {
+          schema: z.string({ description: "Service README in plain text." }),
+        },
+      },
+    },
+    [HttpStatusCodes.NOT_FOUND]: jsonContent(
+      notFoundSchema,
+      "Service not found",
+    ),
+    [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
+      createErrorSchema(IdUUIDParamsSchema),
+      "Invalid id error",
+    ),
+  },
+});
 export type ListRoute = typeof list;
 export type CreateRoute = typeof create;
 export type RemoveRoute = typeof remove;
@@ -271,3 +328,5 @@ export type NodeCreateRoute = typeof nodeCreate;
 export type NodeRemoveRoute = typeof nodeRemove;
 export type NodePatchRoute = typeof nodePatch;
 export type NodeGetRoute = typeof nodeGet;
+export type GetSchemaRoute = typeof getSchema;
+export type GetReadmeRoute = typeof getReadme;

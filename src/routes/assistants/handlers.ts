@@ -1,14 +1,14 @@
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import * as HttpStatusCodes from "stoker/http-status-codes";
 import * as HttpStatusPhrases from "stoker/http-status-phrases";
 
 import type { AppRouteHandler } from "@/lib/types";
 
 import db from "@/db";
-import { Assistant } from "@/db/schema";
+import { Assistant, Chat, Msg } from "@/db/schema";
 import { ZOD_ERROR_CODES, ZOD_ERROR_MESSAGES } from "@/lib/constants";
 
-import type { CreateRoute, GetRoute, ListRoute, PatchRoute, RemoveRoute } from "./routes";
+import type { ChatCreateRoute, ChatGetRoute, ChatQueryRoute, ChatRemoveRoute, CreateRoute, GetRoute, ListRoute, PatchRoute, RemoveRoute } from "./routes";
 
 export const create: AppRouteHandler<CreateRoute> = async (c) => {
   const auth = c.get("auth");
@@ -102,3 +102,53 @@ export const remove: AppRouteHandler<RemoveRoute> = async (c) => {
   }
   return c.body(null, HttpStatusCodes.NO_CONTENT);
 };
+
+export const chatCreate: AppRouteHandler<ChatCreateRoute> = async (c) => {
+  const auth = c.get("auth");
+  const init = c.req.valid("json");
+  const userId = auth.user.id;
+  const [chat] = await db.insert(Chat).values({
+    ...init,
+    userId,
+  }).returning();
+  return c.json(chat, HttpStatusCodes.OK);
+};
+
+export const chatGet: AppRouteHandler<ChatGetRoute> = async (c) => {
+  const { chatId } = c.req.valid("param");
+  const msg = await db.query.Msg.findMany({
+    where(fields, operators) {
+      return operators.eq(fields.chatId, chatId);
+    },
+    orderBy: [asc(Msg.created_at)],
+  });
+  return c.json(msg, HttpStatusCodes.OK);
+};
+
+export const chatRemove: AppRouteHandler<ChatRemoveRoute> = async (c) => {
+  const { chatId } = c.req.valid("param");
+
+  await db.transaction(async (tx) => {
+    const result1 = await tx.delete(Chat).where(
+      eq(Chat.id, chatId),
+    );
+    const result2 = await tx.delete(Msg).where(
+      eq(Msg.chatId, chatId),
+    );
+    if (result1.rowsAffected === 0 && result2.rowsAffected === 0) {
+      return c.json(
+        {
+          message: HttpStatusPhrases.NOT_FOUND,
+        },
+        HttpStatusCodes.NOT_FOUND,
+      );
+    }
+  });
+  return c.body(null, HttpStatusCodes.NO_CONTENT);
+};
+
+// export const chatQuery: AppRouteHandler<ChatQueryRoute> = async (c) => {
+//   const init = c.req.valid("json");
+  
+//   return c.body(null, HttpStatusCodes.NO_CONTENT);
+// };

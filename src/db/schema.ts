@@ -107,9 +107,9 @@ export const uKey = iKey.partial();
 // Chat Table
 export const Chat = sqliteTable("chat", {
   ...Base,
-  summary: text("summary"),
-  userId: text("userId"),
-  assistantId: text("assistantId", { mode: "json" }),
+  summary: text("summary").notNull(),
+  userId: text("userId").notNull(),
+  assistantId: text("assistantId", { mode: "json" }).notNull(),
 });
 
 export const sChat = createSelectSchema(Chat);
@@ -122,13 +122,17 @@ export const iChat = createInsertSchema(Chat).omit({
 
 export const uChat = iChat.partial();
 // Msg Table
-
 export const Msg = sqliteTable("msg", {
   ...MsgBase,
   content: text("content"),
   role: text("role"),
   chatId: text("chatId"),
   userId: text("userId"),
+  model: text("model").notNull(),
+  temperature: text("temperature").notNull(),
+  top_p: text("top_p").notNull(),
+  knowledge: text("knowledge").notNull(),
+  retrieval: integer("retrieval", { mode: "boolean" }).notNull(),
 });
 export const sMsg = createSelectSchema(Msg);
 
@@ -179,6 +183,7 @@ export const iK2t = createInsertSchema(K2t).omit({
 // Seivice Table
 export const Service = sqliteTable("service", {
   ...Base,
+  readme: text("readme").notNull(),
   level: text("level").notNull(),
   schema: text("schema", { mode: "json" }),
   tools: text("tools", { mode: "json" }).default("[]"),

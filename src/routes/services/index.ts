@@ -14,6 +14,8 @@ const router = createRouter()
   .openapi(routes.nodeList, handlers.nodeList)
   .openapi(routes.nodePatch, handlers.nodePatch)
   .openapi(routes.nodeRemove, handlers.nodeRemove)
+  .openapi(routes.getSchema, handlers.getSchema)
+  .openapi(routes.getReadme, handlers.getReadme)
   .all("/:id/fetch/*", async (c) => {
     await handlers.allService(c);
   });
