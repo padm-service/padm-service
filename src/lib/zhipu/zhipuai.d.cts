@@ -1,1 +1,1 @@
-export * from "./dist/zhipuai.js";
+export * from "./zhipudist/zhipuai.js";
