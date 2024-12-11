@@ -1,1 +1,1 @@
-module.exports = require("./dist/zhipuai.cjs");
+module.exports = require("./zhipudist/zhipuai.cjs");
