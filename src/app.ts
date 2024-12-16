@@ -4,7 +4,7 @@ import files from "@/routes/files";
 import iam from "@/routes/iam";
 import keys from "@/routes/keys";
 import services from "@/routes/services";
-
+import document from "@/routes/document"
 const app = createApp();
 
 const routes = [
@@ -13,6 +13,7 @@ const routes = [
   assistants,
   services,
   files,
+  document,
 ] as const;
 
 routes.forEach((route) => {

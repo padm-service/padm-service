@@ -1,85 +1,73 @@
-// import { ChatZhipuAI } from "@langchain/community/chat_models/zhipuai";
-import { ZhipuAIEmbeddings } from "@langchain/community/embeddings/zhipuai";
-import { HumanMessage } from "@langchain/core/messages";
-
+import { ToolCall } from "node_modules/@langchain/core/dist/messages/tool";
+import { MessageFieldWithRole } from "@langchain/core/messages";
+import { ToolDefinition } from "@langchain/core/language_models/base";
 import env from "@/env";
-
 import { ChatZhipuAI } from "./zhipu/zhipuai";
+import { ChatZhipu } from './llm-config'
 
-// export function glmQuery(model: string, temperature: number, message: string) {
-//   const glm = new ChatZhipuAI({
-//     model, // Available models:
-//     temperature,
-//     zhipuAIApiKey: env.OPENAI_KEY,
-//     // In Node.js defaults to process.env.ZHIPUAI_API_KEY
-//   });
-//   const messages = [new HumanMessage(message)];
-//   // message.
-// }
-const glm4 = new ChatZhipuAI({
-  model: "glm-4-flash", // Available models:
-  temperature: 1,
-  zhipuAIApiKey: env.OPENAI_KEY, // In Node.js defaults to process.env.ZHIPUAI_API_KEY
-});
 
-const modelWithTools = glm4?.bindTools([
-  {
-    type: "function",
-    function: {
-      name: "get_flight_number",
-      description: "根据始发地、目的地和日期，查询对应日期的航班号",
-      parameters: {
-        type: "object",
-        properties: {
-          departure: {
-            description: "出发地",
-            type: "string",
-          },
-          destination: {
-            description: "目的地",
-            type: "string",
-          },
-          date: {
-            description: "日期",
-            type: "string",
-          },
+export async function toolCall(model: string, temperature: number, message: MessageFieldWithRole[], tools: Array<ToolDefinition>) {
+
+  const glm = new ChatZhipuAI({
+    model,
+    temperature,
+    zhipuAIApiKey: env.OPENAI_KEY,
+  });
+
+  const glmWithTools = glm.bindTools(tools);
+
+  const res = await glmWithTools.invoke(message);
+
+  let toolCalls: Array<ToolCall> | undefined;
+
+  toolCalls = res?.tool_calls
+
+  if (toolCalls) {
+    for (const tool of toolCalls) {
+      const { name, args } = tool;
+      const arg = JSON.stringify(args as String)
+
+      const [service, endpoint] = name?.split("::") ?? [];
+
+      const url = `https://api.platform.archivemodel.cn/services/${service}/fetch/${endpoint}`;
+      const req = new Request(url, {
+        method: "POST",
+        headers: {
+          'x-api-key': 'sk-ag6ui8h6haj71ouhis7c-d6f2c04e6ef24893f4b7fecec2b5ee6ac917df90'
         },
-        required: ["departure", "destination", "date"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "get_ticket_price",
-      description: "查询某航班在某日的票价",
-      parameters: {
-        type: "object",
-        properties: {
-          flight_number: {
-            description: "航班号",
-            type: "string",
-          },
-          date: {
-            description: "日期",
-            type: "string",
-          },
-        },
-        required: ["flight_number", "date"],
-      },
-    },
-  },
-],
-);
-const messages = [new HumanMessage("帮我查询从2024年1月20日，从北京出发前往上海的航班")];
+        body: arg
+      });
 
-const res = await modelWithTools.invoke(messages);
-console.log(res);
+      const body = await fetch(req).then((res) => res.text());
+      message.push({
+        tool_call_id: tool?.id ?? "",
+        role: "tool",
+        content: body
+      })
+    }
+    return (await glmWithTools.invoke(message)).content as string;
+  }
+  return res.content as string;
+}
 
-// const embedding = new ZhipuAIEmbeddings({
-//   apiKey: "fc66133495332152202227a45dab2168.fSa7eZ7pWah7v8Fj",
-// });
-// const res = await embedding.embedQuery(
-//   "What would be a good company name a company that makes colorful socks?",
-// );
-// console.log({ res });
+// const messages = [{ role: 'user', content: [{ type: 'text', text: '现在几点了？并告诉我一个小时后是几点？' }] }]
+
+// await toolCall('glm-4-flash', 1, messages, [
+//   {
+//     function: {
+//       description: '获取当前时间',
+//       name: 'service:9hqeyufx38v3bxotb0nq::sys-time',
+//       parameters: {
+//         properties: {
+//           timezone: {
+//             description: '时区',
+//             example: 'Asia/Shanghai',
+//             type: 'string'
+//           }
+//         },
+//         type: 'object'
+//       }
+//     },
+//     type: 'function'
+//   }
+// ])

@@ -24,6 +24,7 @@ export const list: AppRouteHandler<ListRoute> = async (c) => {
     },
   },
   );
+
   return c.json(keys);
 };
 

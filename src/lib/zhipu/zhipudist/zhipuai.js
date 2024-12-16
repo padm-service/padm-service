@@ -1,5 +1,5 @@
 import { BaseChatModel, } from "@langchain/core/language_models/chat_models";
-import { AIMessage, ChatMessage, AIMessageChunk,isAIMessage } from "@langchain/core/messages";
+import { AIMessage, ChatMessage, AIMessageChunk, isAIMessage } from "@langchain/core/messages";
 import { convertLangChainToolCallToOpenAI, makeInvalidToolCall, parseToolCall, } from "@langchain/core/output_parsers/openai_tools";
 import { ChatGenerationChunk } from "@langchain/core/outputs";
 import { getEnvironmentVariable } from "@langchain/core/utils/env";
@@ -35,9 +35,6 @@ function messageToRole(message) {
 
 function convertMessagesToZhiPuParams(messages) {
     return messages.map((message) => {
-        if (typeof message.content !== "string") {
-            throw new Error("Non string message content not supported");
-        }
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const completionParam = {
             role: messageToRole(message),
@@ -185,8 +182,8 @@ export class ChatZhipuAI extends BaseChatModel {
         });
         this.zhipuAIApiKey =
             fields?.apiKey ??
-                fields?.zhipuAIApiKey ??
-                getEnvironmentVariable("ZHIPUAI_API_KEY");
+            fields?.zhipuAIApiKey ??
+            getEnvironmentVariable("ZHIPUAI_API_KEY");
         if (!this.zhipuAIApiKey) {
             throw new Error("ZhipuAI API key not found");
         }
@@ -313,22 +310,6 @@ export class ChatZhipuAI extends BaseChatModel {
                 },
             },
         };
-        // const { text } = data.output;
-        // return {
-        //     generations: [
-        //         {
-        //             text,
-        //             message: new AIMessage(text),
-        //         },
-        //     ],
-        //     llmOutput: {
-        //         tokenUsage: {
-        //             promptTokens: prompt_tokens,
-        //             completionTokens: completion_tokens,
-        //             totalTokens: total_tokens,
-        //         },
-        //     },
-        // };
     }
     /** @ignore */
     async completionWithRetry(request, stream, signal, onmessage) {

@@ -2,9 +2,9 @@ import { z } from "@hono/zod-openapi";
 import { createId } from "@paralleldrive/cuid2";
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
-
+import type { MessageContentComplex } from "@langchain/core/messages";
 import { omit } from "@/lib/omit-object";
-
+import { ToolDefinition } from "node_modules/@langchain/core/dist/language_models/base";
 export const Base = {
   id: text("id").$defaultFn(() => createId()).primaryKey(),
   created_at: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
@@ -112,33 +112,44 @@ export const Chat = sqliteTable("chat", {
   assistantId: text("assistantId", { mode: "json" }).notNull(),
 });
 
-export const sChat = createSelectSchema(Chat);
+export const sChat = createSelectSchema(Chat).extend({
+  assistantId: z.array(z.string())
+});
 
 export const iChat = createInsertSchema(Chat).omit({
   id: true,
   created_at: true,
   updated_at: true,
+}).extend({
+  assistantId: z.array(z.string())
 });
 
 export const uChat = iChat.partial();
 // Msg Table
 export const Msg = sqliteTable("msg", {
   ...MsgBase,
-  content: text("content"),
-  role: text("role"),
-  chatId: text("chatId"),
-  userId: text("userId"),
+  content: text("content").$type<MessageContentComplex[]>().notNull(),
+  role: text("role").notNull(),
+  assistantId: text("assistantId").notNull(),
+  chatId: text("chatId").notNull(),
+  userId: text("userId").notNull(),
   model: text("model").notNull(),
   temperature: text("temperature").notNull(),
   top_p: text("top_p").notNull(),
   knowledge: text("knowledge").notNull(),
   retrieval: integer("retrieval", { mode: "boolean" }).notNull(),
+  systemPrompt: text("systemPrompt").notNull().default(""),
 });
-export const sMsg = createSelectSchema(Msg);
+export const sMsg = createSelectSchema(Msg).extend({
+  content: z.array(z.any()),
+});
 
 export const iMsg = createInsertSchema(Msg).omit({
   id: true,
   created_at: true,
+}).extend({
+  service: z.array(z.string()),
+  content: z.array(z.any()),
 });
 
 export const uMsg = iMsg.partial();
@@ -185,10 +196,11 @@ export const Service = sqliteTable("service", {
   ...Base,
   readme: text("readme").notNull(),
   level: text("level").notNull(),
-  schema: text("schema", { mode: "json" }),
-  tools: text("tools", { mode: "json" }).default("[]"),
+  schema: text("schema", { mode: "json" }).notNull(),
+  // tools: text("tools", { mode: "json" }).default("[]"),
+  tools: text("tools").$type<ToolDefinition[]>().notNull(),
   unit_price: integer("unit_price").notNull(),
-  userId: text("userId"),
+  userId: text("userId").notNull(),
 });
 export const sService = createSelectSchema(Service).extend({
   schema: z.any(),
@@ -202,6 +214,7 @@ export const iService = createInsertSchema(Service).omit({
   tools: true,
 }).extend({
   schema: z.any(),
+  tools: z.array(z.string()),
 });
 export const uService = iService.partial();
 
@@ -243,3 +256,35 @@ export const iFile = createInsertSchema(File).omit({
   updated_at: true,
 });
 export const uFile = iFile.partial();
+
+//Document Table
+export const Partition = sqliteTable('partition', {
+  ...Base,
+  name: text("name").notNull(),
+  userId: text("userId").notNull(),
+  collectionId: text("collectionId").notNull(),
+  url: text('url').notNull(),
+  file_size: text('fileSize').notNull(),
+  state: text('state').notNull(),
+  segment: integer('segment').notNull(),
+  file_name: text('fileName').notNull(),
+})
+export const sPartition = createSelectSchema(Partition);
+export const iPartition = createInsertSchema(Partition);
+export const uPartition = iPartition.partial();
+
+//Document Table
+export const Collection = sqliteTable('collection', {
+  ...Base,
+  name: text("name"),
+  userId: text("userId").notNull(),
+  partitionId: text("partitionID", { mode: "json" }).notNull(),
+})
+export const sCollection = createSelectSchema(Collection).extend({
+  partitionId: z.array(z.string())
+});;
+export const iCollection = createInsertSchema(Collection).extend({
+  partitionId: z.array(z.string())
+});
+export const uCollection = iCollection.partial();
+

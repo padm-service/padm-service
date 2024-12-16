@@ -5,6 +5,7 @@ import { createErrorSchema, IdUUIDParamsSchema } from "stoker/openapi/schemas";
 
 import { iAssistant, iChat, iMsg, sAssistant, sChat, sMsg, uAssistant, uChat } from "@/db/schema";
 import { notFoundSchema } from "@/lib/constants";
+import { QueryInit, QueryMessage } from "@/lib/types";
 
 const assTags = ["assistant"];
 const chatTags = ["chat"];
@@ -235,7 +236,7 @@ export const chatQuery = createRoute({
       assistantId: z.string({ description: "assistant id" }),
     }),
     body: jsonContentRequired(
-      iMsg,
+      QueryInit,
       "query json param",
     ),
   },
@@ -245,11 +246,11 @@ export const chatQuery = createRoute({
     {
       description: "chat Generate",
       content: {
-        "application/json": {
-          schema: sMsg,
-        },
+        // "application/json": {
+        //   schema: QueryMessage,
+        // },
         "text/event-stream": {
-          schema: sMsg,
+          schema: QueryMessage,
         },
       },
     },
