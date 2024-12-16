@@ -52,8 +52,10 @@ export async function textToSQL(loader: BufferLoader, collectionName: string, pa
     });
 }
 
-function imageToSQL(collectionName: string, partitionName: string, imageUrls: string[], model: string) {
-    ChatZhipu.model = model;
+function imageToSQL(collectionName: string, partitionName: string, imageUrls: string[], model?: string) {
+    if (model) {
+        ChatZhipu.model = model;
+    }
     imageUrls.forEach(async imageUrl => {
         const messages = [{ role: 'user', content: [{ type: "image_url", image_url: { url: imageUrl } }, { type: 'text', text: '请描述这张图片' }] }]
         const res = await ChatZhipu.invoke(messages)
@@ -109,7 +111,7 @@ export async function getPartitionContent(collectionId: string, partitionId: str
     return result.data;
 }
 
-export async function vector(filePath: string, collectionId: string, model: string, partitionID: string) {
+export async function vector(filePath: string, collectionId: string, partitionID: string, model?: string | undefined) {
     await MilvusClients.loadCollection({ collection_name: collectionId });
     MilvusClients.createPartition({
         collection_name: collectionId,

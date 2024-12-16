@@ -269,6 +269,7 @@ export const Partition = sqliteTable('partition', {
   segment: integer('segment').notNull(),
   file_name: text('fileName').notNull(),
 })
+export type Partitions = typeof Partition.$inferSelect;
 export const sPartition = createSelectSchema(Partition);
 export const iPartition = createInsertSchema(Partition);
 export const uPartition = iPartition.partial();

@@ -23,6 +23,7 @@
     "@types/pdf-image": "^2.0.4",
     "@types/pdf-parse": "^1.1.4",
     "@zilliz/milvus2-sdk-node": "^2.5.1",
+    "amqp-ts": "^1.8.0",
     "argon2": "^0.41.1",
     "cheerio": "^1.0.0",
     "cos-nodejs-sdk-v5": "^2.14.6",

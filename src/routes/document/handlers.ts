@@ -1,4 +1,4 @@
-import { asc, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { AppRouteHandler } from '@/lib/types'
 import type { ListRoute, CreateRoute, RemoveRoute, PatchRoute, PartitionCreateRoute, PartitionGetRoute, PartitionListRoute, PartitionPatchRoute, PartitionRemoveRoute } from './routes'
 import db from '@/db';
@@ -7,7 +7,8 @@ import * as HttpStatusCodes from "stoker/http-status-codes";
 import * as HttpStatusPhrases from "stoker/http-status-phrases";
 import { deleteCollection, deletePartition } from "@/lib/vector";
 import { ZOD_ERROR_CODES, ZOD_ERROR_MESSAGES } from "@/lib/constants";
-import { createOneCollection, vector, getPartitionContent } from "@/lib/vector";
+import { createOneCollection, getPartitionContent } from "@/lib/vector";
+import { send } from "@/lib/send";
 
 export const create: AppRouteHandler<CreateRoute> = async (c) => {
     const auth = c.get('auth');
@@ -40,7 +41,7 @@ export const remove: AppRouteHandler<RemoveRoute> = async (c) => {
     await db.transaction(async (tx) => {
         const result = await tx.delete(Collection).where(eq
             (Collection.id, id));
-        await db.delete(Partition).where(eq
+        await tx.delete(Partition).where(eq
             (Partition.collectionId, id));
         await deleteCollection(id);
         if (result.rowsAffected === 0) {
@@ -119,7 +120,8 @@ export const partitionCreate: AppRouteHandler<PartitionCreateRoute> = async (c) 
             collectionId: id,
             userId,
         }).returning();
-        vector(init.file_name, id, 'glm-4v-flash', partition.id)
+        await send(partition);
+
         return partition;
     });
     return c.json(partition, HttpStatusCodes.OK);
@@ -128,7 +130,7 @@ export const partitionCreate: AppRouteHandler<PartitionCreateRoute> = async (c) 
 export const partitionRemove: AppRouteHandler<PartitionRemoveRoute> = async (c) => {
     const { collectionId, partitionId } = c.req.valid("param");
     await db.transaction(async (tx) => {
-        const result = await db.delete(Partition).where(eq
+        const result = await tx.delete(Partition).where(eq
             (Partition.id, partitionId));
         await deletePartition(collectionId, partitionId);
         if (result.rowsAffected === 0) {
