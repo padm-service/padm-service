@@ -12,14 +12,13 @@ import { createOneCollection, vector, getPartitionContent } from "@/lib/vector";
 export const create: AppRouteHandler<CreateRoute> = async (c) => {
     const auth = c.get('auth');
     const init = c.req.valid('json');
-    const { id } = c.req.valid('param')
     const userId = auth.user.id;
     const collection = await db.transaction(async (tx) => {
         const [collection] = await tx.insert(Collection).values({
             ...init,
             userId,
         }).returning();
-        await createOneCollection(id);
+        await createOneCollection(collection.id);
         return collection;
     });
     return c.json(collection, HttpStatusCodes.OK);

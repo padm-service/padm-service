@@ -10,15 +10,12 @@ const collectionTags = ['collection']
 const partitionTags = ['partition']
 
 export const create = createRoute({
-    path: '/collections/{id}',
+    path: '/collections',
     method: 'post',
     summary: "add a collection",
     description: "add a collection",
     tags: collectionTags,
     request: {
-        params: z.object({
-            id: z.string()
-        }),
         body: jsonContentRequired(
             iCollection,
             "create a Collection"
