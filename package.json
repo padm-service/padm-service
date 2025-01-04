@@ -35,8 +35,6 @@
     "hono-pino": "^0.4.0",
     "langchain": "^0.3.6",
     "mammoth": "^1.8.0",
-    "pdf-image": "^2.0.0",
-    "pdf-parse": "^1.1.1",
     "pino": "^9.5.0",
     "pino-pretty": "^11.3.0",
     "stoker": "^1.2.7",

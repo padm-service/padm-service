@@ -27,6 +27,7 @@ const EnvSchema = z.object({
   VECTOR_URL: z.string(),
   VECTOR_USER: z.string(),
   VECTOR_PASS: z.string(),
+  MQ_URL: z.string(),
 }).superRefine((input, ctx) => {
   if (input.NODE_ENV === "production" && !input.DATABASE_AUTH_TOKEN) {
     ctx.addIssue({

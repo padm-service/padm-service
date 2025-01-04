@@ -1,13 +1,13 @@
-import { ToolCall } from "node_modules/@langchain/core/dist/messages/tool";
-import { MessageFieldWithRole } from "@langchain/core/messages";
-import { ToolDefinition } from "@langchain/core/language_models/base";
-import env from "@/env";
-import { ChatZhipuAI } from "./zhipu/zhipuai";
-import { ChatZhipu } from './llm-config'
+import type { ToolDefinition } from "@langchain/core/language_models/base";
+import type { MessageFieldWithRole } from "@langchain/core/messages";
+import type { ToolCall } from "node_modules/@langchain/core/dist/messages/tool";
 
+import env from "@/env";
+
+import { ChatZhipu } from "./llm-config";
+import { ChatZhipuAI } from "./zhipu/zhipuai";
 
 export async function toolCall(model: string, temperature: number, message: MessageFieldWithRole[], tools: Array<ToolDefinition>) {
-
   const glm = new ChatZhipuAI({
     model,
     temperature,
@@ -20,12 +20,12 @@ export async function toolCall(model: string, temperature: number, message: Mess
 
   let toolCalls: Array<ToolCall> | undefined;
 
-  toolCalls = res?.tool_calls
+  toolCalls = res?.tool_calls;
 
   if (toolCalls) {
     for (const tool of toolCalls) {
       const { name, args } = tool;
-      const arg = JSON.stringify(args as String)
+      const arg = JSON.stringify(args as string);
 
       const [service, endpoint] = name?.split("::") ?? [];
 
@@ -33,17 +33,17 @@ export async function toolCall(model: string, temperature: number, message: Mess
       const req = new Request(url, {
         method: "POST",
         headers: {
-          'x-api-key': 'sk-ag6ui8h6haj71ouhis7c-d6f2c04e6ef24893f4b7fecec2b5ee6ac917df90'
+          "x-api-key": "sk-ag6ui8h6haj71ouhis7c-d6f2c04e6ef24893f4b7fecec2b5ee6ac917df90",
         },
-        body: arg
+        body: arg,
       });
 
-      const body = await fetch(req).then((res) => res.text());
+      const body = await fetch(req).then(res => res.text());
       message.push({
         tool_call_id: tool?.id ?? "",
         role: "tool",
-        content: body
-      })
+        content: body,
+      });
     }
     return (await glmWithTools.invoke(message)).content as string;
   }
