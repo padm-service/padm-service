@@ -13,3 +13,4 @@ const loader = new DocxLoader("C:\\Users\\wbl\\Desktop\\test.docx");
 const documents = await loader.load();
 
 console.log(documents);
+

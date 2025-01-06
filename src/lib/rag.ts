@@ -1,9 +1,3 @@
-import { Milvus } from "@langchain/community/vectorstores/milvus";
-import { PromptTemplate } from "@langchain/core/prompts";
-import { images } from "mammoth";
-
-import env from "@/env";
-
 import type { Imag } from "./types";
 
 import { ChatZhipu, ZhipuAIEmbedding } from "./llm-config";
@@ -64,4 +58,4 @@ export async function rag(query: string, collectionID: string, partitionIDs: str
   };
 }
 
-// console.log(await rag("草莓", "knowledge1", ['3112'], "你是一个草莓种植专家，能正确准确地回答问题，但只能回答草莓相关的问题。回答中不要出现”根据文档“以及“以上信息来自文档内容”这些字。", "glm-4-flash"));
+// console.log(await rag("草莓", "knowledge2", ['1'], "你是一个草莓种植专家，能正确准确地回答问题，但只能回答草莓相关的问题。回答中不要出现”根据文档“以及“以上信息来自文档内容”这些字。", "glm-4-flash"));

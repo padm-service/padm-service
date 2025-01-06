@@ -2,9 +2,10 @@ import type { CallbackManagerForLLMRun } from "@langchain/core/callbacks/manager
 import type { BaseLanguageModelInput } from "@langchain/core/language_models/base";
 import type { BaseChatModel, BaseChatModelCallOptions, BaseChatModelParams, BindToolsInput } from "@langchain/core/language_models/chat_models";
 import type { AIMessageChunk, BaseMessage, MessageContentComplex } from "@langchain/core/messages";
+import type { MessageContent } from "@langchain/core/messages";
 import type { ChatGenerationChunk, ChatResult } from "@langchain/core/outputs";
 import type { Runnable } from "@langchain/core/runnables";
-import { MessageContent } from "@langchain/core/messages";
+
 type ZhiPuFinishReason = "stop" | "length" | "tool_calls" | "null" | null;
 interface ZhiPuToolCall {
   id: string;
@@ -147,7 +148,7 @@ export declare class ChatZhipuAI extends BaseChatModel implements ChatZhipuAIPar
   topP?: number | undefined;
   stop?: string[];
   constructor(fields?: Partial<ChatZhipuAIParams> & BaseChatModelParams);
-  bindTools(tools: BindToolsInput[], kwargs?: Partial<ZhiPuCallOptions>): Runnable<MessageContentComplex[], AIMessageChunk, ZhiPuCallOptions>;
+   bindTools(tools: BindToolsInput[], kwargs?: Partial<ZhiPuCallOptions>): Runnable<MessageContentComplex[], AIMessageChunk, ZhiPuCallOptions>;
   /**
    * Get the parameters used to invoke the model
    */

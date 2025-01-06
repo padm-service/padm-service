@@ -1,7 +1,6 @@
 import type { BufferLoader } from "langchain/document_loaders/fs/buffer";
 
 import { DocxLoader } from "@langchain/community/document_loaders/fs/docx";
-import { ZhipuAIEmbeddings } from "@langchain/community/embeddings/zhipuai";
 import { load } from "cheerio";
 import Mammoth from "mammoth";
 
@@ -157,6 +156,6 @@ export async function deletePartition(collectionId: string, partitionID: string)
 // renameCollection("knowledge1", "knowledge2");
 // await createOneCollection('knowledge1')
 // const qr = await getPartitionContent('knowledge2', '_default')
-// vector("C:\\Users\\wbl\\Desktop\\test.docx", 'knowledge1', 'glm-4v-flash', '1')
+vector("C:\\Users\\admin\\Desktop\\test.docx", 'knowledge2', '1', 'glm-4v-flash')
 // deleteCollection('knowledge1')
 // console.log(await getPartitionContent('knowledge2', '1'));

@@ -17,16 +17,14 @@ export async function toolCall(model: string, temperature: number, message: Mess
   const glmWithTools = glm.bindTools(tools);
 
   const res = await glmWithTools.invoke(message);
+  console.log(res);
 
-  let toolCalls: Array<ToolCall> | undefined;
-
-  toolCalls = res?.tool_calls;
+  const toolCalls: Array<ToolCall> | undefined = res?.tool_calls;
 
   if (toolCalls) {
     for (const tool of toolCalls) {
       const { name, args } = tool;
-      const arg = JSON.stringify(args as string);
-
+      const arg = JSON.stringify(args);
       const [service, endpoint] = name?.split("::") ?? [];
 
       const url = `https://api.platform.archivemodel.cn/services/${service}/fetch/${endpoint}`;
@@ -50,24 +48,25 @@ export async function toolCall(model: string, temperature: number, message: Mess
   return res.content as string;
 }
 
-// const messages = [{ role: 'user', content: [{ type: 'text', text: '现在几点了？并告诉我一个小时后是几点？' }] }]
+// const messages = [{ role: "user", content: [{ type: "text", text: "你叫什么名字？" }] }];
 
-// await toolCall('glm-4-flash', 1, messages, [
+// const result = await toolCall("glm-4-flash", 1, messages, [
 //   {
 //     function: {
-//       description: '获取当前时间',
-//       name: 'service:9hqeyufx38v3bxotb0nq::sys-time',
+//       description: "获取当前时间",
+//       name: "service:9hqeyufx38v3bxotb0nq::sys-time",
 //       parameters: {
 //         properties: {
 //           timezone: {
-//             description: '时区',
-//             example: 'Asia/Shanghai',
-//             type: 'string'
-//           }
+//             description: "时区",
+//             example: "Asia/Shanghai",
+//             type: "string",
+//           },
 //         },
-//         type: 'object'
-//       }
+//         type: "object",
+//       },
 //     },
-//     type: 'function'
-//   }
-// ])
+//     type: "function",
+//   },
+// ]);
+// console.log(result);

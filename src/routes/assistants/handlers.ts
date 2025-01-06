@@ -1,17 +1,20 @@
+import type { MessageContentComplex, MessageFieldWithRole, MessageType } from "@langchain/core/messages";
+import type { ToolDefinition } from "node_modules/@langchain/core/dist/language_models/base";
+
 import { asc, eq } from "drizzle-orm";
+import { SSEStreamingApi, streamSSE } from "hono/streaming";
 import * as HttpStatusCodes from "stoker/http-status-codes";
 import * as HttpStatusPhrases from "stoker/http-status-phrases";
-import { SSEStreamingApi, streamSSE } from "hono/streaming";
+
 import type { AppRouteHandler } from "@/lib/types";
 
 import db from "@/db";
 import { Assistant, Chat, Msg } from "@/db/schema";
-import { ZOD_ERROR_CODES, ZOD_ERROR_MESSAGES } from "@/lib/constants";
 import { toolCall } from "@/lib/bigmodel";
+import { ZOD_ERROR_CODES, ZOD_ERROR_MESSAGES } from "@/lib/constants";
 import { rag } from "@/lib/rag";
+
 import type { ChatCreateRoute, ChatGetRoute, ChatQueryRoute, ChatRemoveRoute, CreateRoute, GetRoute, ListRoute, PatchRoute, RemoveRoute } from "./routes";
-import type { MessageFieldWithRole, MessageContentComplex, MessageType } from "@langchain/core/messages";
-import { ToolDefinition } from "node_modules/@langchain/core/dist/language_models/base";
 
 export const create: AppRouteHandler<CreateRoute> = async (c) => {
   const auth = c.get("auth");
@@ -95,7 +98,8 @@ export const remove: AppRouteHandler<RemoveRoute> = async (c) => {
   const { id } = c.req.valid("param");
   await db.transaction(async (tx) => {
     const result = await db.delete(Assistant).where(
-      eq(Assistant.id, id));
+      eq(Assistant.id, id),
+    );
     await tx.delete(Chat).where(
       eq(Chat.assistantId, id),
     );
@@ -158,50 +162,50 @@ export const chatRemove: AppRouteHandler<ChatRemoveRoute> = async (c) => {
   return c.body(null, HttpStatusCodes.NO_CONTENT);
 };
 
-
+// @ts-ignore
 export const chatQuery: AppRouteHandler<ChatQueryRoute> = async (c) => {
-  const init = c.req.valid('json');
+  const init = c.req.valid("json");
   const { service, knowledge, llm, retrieval } = init;
-  let messages = init.messages as MessageFieldWithRole[];
+  const messages = init.messages as MessageFieldWithRole[];
   let tools: Array<ToolDefinition> | undefined | any;
-  let systemContent = {
-    role: 'system',
-    content: ""
+  const systemContent = {
+    role: "system",
+    content: "",
   };
   let image = [];
   if (!retrieval) {
     const services = await db.transaction(async (tx) => {
-      const services = []
+      const services = [];
       for (const serviceId in service) {
         const singleService = await tx.query.Service.findFirst({
           where(fields, operators) {
             return operators.eq(fields.id, serviceId);
           },
-        })
+        });
         services.push(singleService);
       }
       return services;
-    })
-    tools = []
-    services.forEach(service => {
-      service?.tools.forEach(tool => {
+    });
+    tools = [];
+    services.forEach((service) => {
+      service?.tools.forEach((tool) => {
         tools?.push(tool);
       });
     });
 
-    if (llm.system_prompt &&
-      messages.length > 0 &&
-      messages[0].role !== 'system') {
+    if (llm.system_prompt
+      && messages.length > 0
+      && messages[0].role !== "system") {
       messages.unshift({
         role: "system",
-        content: llm.system_prompt
-      })
+        content: llm.system_prompt,
+      });
     }
-    systemContent.content = await toolCall('glm-4-air', 1, messages, tools);
+    systemContent.content = await toolCall("glm-4-air", 1, messages, tools);
   }
 
   if (retrieval && knowledge) {
-    const knowledgeRes = await rag(messages[0].content as string, 'collectionID', ['partitionIDs'], 'prompt', 'model') as any
+    const knowledgeRes = await rag(messages[0].content as string, "collectionID", ["partitionIDs"], "prompt", "model") as any;
     systemContent.content = knowledgeRes.message;
     image = knowledgeRes.images;
   }
@@ -210,8 +214,7 @@ export const chatQuery: AppRouteHandler<ChatQueryRoute> = async (c) => {
   return streamSSE(c, async (stream) => {
     await stream.writeSSE({
       event: "message",
-      data: JSON.stringify(systemContent)
-    })
-  })
-
+      data: JSON.stringify(systemContent),
+    });
+  });
 };
