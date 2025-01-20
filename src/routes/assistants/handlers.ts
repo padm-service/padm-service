@@ -188,7 +188,7 @@ export const chatQuery: AppRouteHandler<ChatQueryRoute> = async (c) => {
     });
     tools = [];
     services.forEach((service) => {
-      service?.tools.forEach((tool) => {
+      (service?.tools as ToolDefinition[]).forEach((tool) => {
         tools?.push(tool);
       });
     });

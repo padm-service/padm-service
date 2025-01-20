@@ -1,6 +1,7 @@
 import { defineConfig } from "drizzle-kit";
 
 import env from "@/env";
+import { number } from "zod";
 
 export default defineConfig({
   schema: "./src/db/schema.ts",
@@ -12,3 +13,4 @@ export default defineConfig({
     authToken: env.DATABASE_AUTH_TOKEN,
   },
 });
+

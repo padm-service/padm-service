@@ -3,9 +3,8 @@ import type { MessageFieldWithRole } from "@langchain/core/messages";
 import type { ToolCall } from "node_modules/@langchain/core/dist/messages/tool";
 
 import env from "@/env";
-
-import { ChatZhipu } from "./llm-config";
-import { ChatZhipuAI } from "./zhipu/zhipuai";
+import { ChatZhipuAI } from "@langchain/community/chat_models/zhipuai";
+// import { ChatZhipuAI } from "./zhipu/zhipuai.cjs";
 
 export async function toolCall(model: string, temperature: number, message: MessageFieldWithRole[], tools: Array<ToolDefinition>) {
   const glm = new ChatZhipuAI({
@@ -14,9 +13,9 @@ export async function toolCall(model: string, temperature: number, message: Mess
     zhipuAIApiKey: env.OPENAI_KEY,
   });
 
-  const glmWithTools = glm.bindTools(tools);
+  // const glmWithTools = glm.bindTools(tools);
 
-  const res = await glmWithTools.invoke(message);
+  const res = await glm.invoke(message);
   console.log(res);
 
   const toolCalls: Array<ToolCall> | undefined = res?.tool_calls;
@@ -43,7 +42,7 @@ export async function toolCall(model: string, temperature: number, message: Mess
         content: body,
       });
     }
-    return (await glmWithTools.invoke(message)).content as string;
+    return (await glm.invoke(message)).content as string;
   }
   return res.content as string;
 }

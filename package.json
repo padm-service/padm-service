@@ -9,7 +9,6 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "npm run lint --fix",
-    "test": "cross-env NODE_ENV=test vitest",
     "build": "tsc && tsc-alias"
   },
   "dependencies": {
@@ -20,8 +19,6 @@
     "@libsql/client": "^0.14.0",
     "@paralleldrive/cuid2": "^2.2.2",
     "@scalar/hono-api-reference": "^0.5.156",
-    "@types/pdf-image": "^2.0.4",
-    "@types/pdf-parse": "^1.1.4",
     "@zilliz/milvus2-sdk-node": "^2.5.1",
     "amqp-ts": "^1.8.0",
     "argon2": "^0.41.1",

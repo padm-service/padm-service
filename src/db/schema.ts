@@ -4,7 +4,6 @@ import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import type { MessageContentComplex } from "@langchain/core/messages";
 import { omit } from "@/lib/omit-object";
-import { ToolDefinition } from "node_modules/@langchain/core/dist/language_models/base";
 export const Base = {
   id: text("id").$defaultFn(() => createId()).primaryKey(),
   created_at: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
@@ -196,14 +195,14 @@ export const Service = sqliteTable("service", {
   ...Base,
   readme: text("readme").notNull(),
   level: text("level").notNull(),
-  schema: text("schema", { mode: "json" }).notNull(),
-  // tools: text("tools", { mode: "json" }).default("[]"),
-  tools: text("tools").$type<ToolDefinition[]>().notNull(),
+  schema: text("schema", { mode: "json" }),
+  tools: text("tools", { mode: "json" }).default("[]"),
+  // tools: text("tools").$type<ToolDefinition[]>().notNull(),
   unit_price: integer("unit_price").notNull(),
   userId: text("userId").notNull(),
 });
 export const sService = createSelectSchema(Service).extend({
-  schema: z.any(),
+  schema: z.string(),
   tools: z.array(z.string()),
 });
 

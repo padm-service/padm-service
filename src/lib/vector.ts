@@ -156,6 +156,6 @@ export async function deletePartition(collectionId: string, partitionID: string)
 // renameCollection("knowledge1", "knowledge2");
 // await createOneCollection('knowledge1')
 // const qr = await getPartitionContent('knowledge2', '_default')
-vector("C:\\Users\\admin\\Desktop\\test.docx", 'knowledge2', '1', 'glm-4v-flash')
+// vector("C:\\Users\\admin\\Desktop\\test.docx", 'knowledge2', '1', 'glm-4v-flash')
 // deleteCollection('knowledge1')
 // console.log(await getPartitionContent('knowledge2', '1'));
