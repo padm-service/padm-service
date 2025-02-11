@@ -2,7 +2,6 @@ import { OpenAPIHono } from "@hono/zod-openapi";
 import { cors } from "hono/cors";
 import { notFound, onError, serveEmojiFavicon } from "stoker/middlewares";
 import { defaultHook } from "stoker/openapi";
-
 import env from "@/env";
 import configureOpenAPI from "@/lib/configure-open-api";
 import { auth } from "@/middlewares/auth";

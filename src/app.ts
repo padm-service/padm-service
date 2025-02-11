@@ -5,6 +5,7 @@ import iam from "@/routes/iam";
 import keys from "@/routes/keys";
 import services from "@/routes/services";
 import document from "@/routes/document"
+import users from "@/routes/users"
 const app = createApp();
 
 const routes = [
@@ -14,6 +15,7 @@ const routes = [
   services,
   files,
   document,
+  users
 ] as const;
 
 routes.forEach((route) => {

@@ -11,6 +11,7 @@ export interface AppBindings {
 export type User = {
   id: string;
   icon: string;
+  name: string;
   balance: number;
   email: string;
   level: number;

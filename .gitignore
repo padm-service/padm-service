@@ -31,3 +31,4 @@ dev.db
 test.db
 .vercel
 dist
+bun.lockb

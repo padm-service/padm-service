@@ -4,44 +4,45 @@ import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import type { MessageContentComplex } from "@langchain/core/messages";
 import { omit } from "@/lib/omit-object";
+import { number } from "zod";
 export const Base = {
   id: text("id").$defaultFn(() => createId()).primaryKey(),
-  created_at: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
-  updated_at: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()).$onUpdate(() => new Date()),
+  created_at: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+  updated_at: integer("updated_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()).$onUpdate(() => new Date()),
 };
 export const MsgBase = omit(Base, ["updated_at"]);
 // tasks Table
-export const tasks = sqliteTable("tasks", {
-  id: integer("id", { mode: "number" })
-    .primaryKey({ autoIncrement: true }),
-  name: text("name")
-    .notNull(),
-  done: integer("done", { mode: "boolean" })
-    .notNull()
-    .default(false),
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .$defaultFn(() => new Date()),
-  updatedAt: integer("updated_at", { mode: "timestamp" })
-    .$defaultFn(() => new Date())
-    .$onUpdate(() => new Date()),
-});
+// export const tasks = sqliteTable("tasks", {
+//   id: integer("id", { mode: "number" })
+//     .primaryKey({ autoIncrement: true }),
+//   name: text("name")
+//     .notNull(),
+//   done: integer("done", { mode: "boolean" })
+//     .notNull()
+//     .default(false),
+//   createdAt: integer("created_at", { mode: "timestamp" })
+//     .$defaultFn(() => new Date()),
+//   updatedAt: integer("updated_at", { mode: "timestamp" })
+//     .$defaultFn(() => new Date())
+//     .$onUpdate(() => new Date()),
+// });
 
-export const selectTasksSchema = createSelectSchema(tasks);
+// export const selectTasksSchema = createSelectSchema(tasks);
 
-export const insertTasksSchema = createInsertSchema(
-  tasks,
-  {
-    name: schema => schema.name.min(1).max(500),
-  },
-).required({
-  done: true,
-}).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+// export const insertTasksSchema = createInsertSchema(
+//   tasks,
+//   {
+//     name: schema => schema.name.min(1).max(500),
+//   },
+// ).required({
+//   done: true,
+// }).omit({
+//   id: true,
+//   createdAt: true,
+//   updatedAt: true,
+// });
 
-export const patchTasksSchema = insertTasksSchema.partial();
+// export const patchTasksSchema = insertTasksSchema.partial();
 // User Table
 export const User = sqliteTable("user", {
   ...Base,
@@ -51,26 +52,16 @@ export const User = sqliteTable("user", {
   email: text("email").notNull(),
   level: integer("level").notNull().default(0),
   state: text("state").notNull().default("normal"),
-  permission: text("permission"),
+  permission: text("permission").notNull().default("[]"),
   scope: text("scope").notNull().default("user"),
   secret: text("secret").notNull(),
 });
 export type Users = typeof User.$inferSelect;
-export const selectUser = createSelectSchema(User);
+export const sUser = createSelectSchema(User);
 
-export const insertUser = createInsertSchema(User,
-).required({
-  name: true,
-}).omit({
-  id: true,
-  created_at: true,
-  updated_at: true,
-  icon: true,
-  permission: true,
-  state: true,
-});
+export const iUser = createInsertSchema(User)
 
-export const partialUser = selectUser.partial();
+export const uUser = sUser.partial();
 
 // Key Table
 
@@ -194,7 +185,7 @@ export const iK2t = createInsertSchema(K2t).omit({
 export const Service = sqliteTable("service", {
   ...Base,
   readme: text("readme").notNull(),
-  level: text("level").notNull(),
+  level: integer("level").notNull(),
   schema: text("schema", { mode: "json" }),
   tools: text("tools", { mode: "json" }).default("[]"),
   // tools: text("tools").$type<ToolDefinition[]>().notNull(),

@@ -3,10 +3,9 @@ import * as HttpStatusCodes from "stoker/http-status-codes";
 import { jsonContent, jsonContentRequired } from "stoker/openapi/helpers";
 import { createErrorSchema, IdParamsSchema } from "stoker/openapi/schemas";
 
-import { insertUser } from "@/db/schema";
+import { iUser, sUser } from "@/db/schema";
 import { confilctSchema, errorSchema } from "@/lib/constants";
 import { zToken } from "@/lib/types";
-
 const tags = ["iam"];
 
 export const register = createRoute({
@@ -15,7 +14,7 @@ export const register = createRoute({
   tags,
   request: {
     body: jsonContentRequired(
-      insertUser,
+      iUser,
       "create account",
     ),
   },
@@ -35,7 +34,9 @@ export const login = createRoute({
   method: "post",
   request: {
     body: jsonContentRequired(
-      insertUser,
+      iUser.omit({
+        name: true
+      }),
       "account check",
     ),
   },
