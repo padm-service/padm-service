@@ -1,13 +1,13 @@
 import { eq } from "drizzle-orm";
 import { AppRouteHandler } from '@/lib/types'
-import type { ListRoute, CreateRoute, RemoveRoute, PatchRoute, PartitionCreateRoute, PartitionGetRoute, PartitionListRoute, PartitionPatchRoute, PartitionRemoveRoute } from './routes'
+import type { ListRoute, CreateRoute, RemoveRoute, PatchRoute, PartitionCreateRoute, PartitionGetRoute, PartitionListRoute, PartitionPatchRoute, PartitionRemoveRoute, PartitionBatchPatchRoute, PartitionBatchRemoveRoute } from './routes'
 import db from '@/db';
-import { Collection, Partition } from '@/db/schema';
+import { Collection, Partition, Partitions, Partitionse } from '@/db/schema';
 import * as HttpStatusCodes from "stoker/http-status-codes";
 import * as HttpStatusPhrases from "stoker/http-status-phrases";
 import { deleteCollection, deletePartition } from "@/lib/vector";
 import { ZOD_ERROR_CODES, ZOD_ERROR_MESSAGES } from "@/lib/constants";
-import { createOneCollection, getPartitionContent } from "@/lib/vector";
+import { createCollection, getPartitionContent } from "@/lib/vector";
 import { send } from "@/lib/send";
 
 export const create: AppRouteHandler<CreateRoute> = async (c) => {
@@ -19,7 +19,7 @@ export const create: AppRouteHandler<CreateRoute> = async (c) => {
             ...init,
             userId,
         }).returning();
-        await createOneCollection(collection.id);
+        await createCollection(collection.id);
         return collection;
     });
     return c.json(collection, HttpStatusCodes.OK);
@@ -114,16 +114,16 @@ export const partitionCreate: AppRouteHandler<PartitionCreateRoute> = async (c) 
     const { id } = c.req.valid('param')
     const init = c.req.valid('json');
     const userId = auth.user.id;
-    const partition = await db.transaction(async (tx) => {
-        const [partition] = await tx.insert(Partition).values({
-            ...init,
+    const insert: Partitionse[] = [];
+    for (const partition of init) {
+        insert.push({
+            ...partition,
             collectionId: id,
             userId,
-        }).returning();
-        await send(partition);
-
-        return partition;
-    });
+        })
+    }
+    const partition = await db.insert(Partition).values(insert).returning();
+    await send(partition);
     return c.json(partition, HttpStatusCodes.OK);
 }
 
@@ -144,11 +144,30 @@ export const partitionRemove: AppRouteHandler<PartitionRemoveRoute> = async (c) 
     })
     return c.body(null, HttpStatusCodes.NO_CONTENT);
 }
+export const partitionBatchRemove: AppRouteHandler<PartitionBatchRemoveRoute> = async (c) => {
+    const { collectionId } = c.req.valid("param");
+    const { ids } = c.req.valid("json");
+    await db.transaction(async (tx) => {
+        for (const partitionId of ids) {
+            const result = await tx.delete(Partition).where(eq
+                (Partition.id, partitionId));
+            await deletePartition(collectionId, partitionId);
+            if (result.rowsAffected === 0) {
+                return c.json(
+                    {
+                        message: HttpStatusPhrases.NOT_FOUND,
+                    },
+                    HttpStatusCodes.NOT_FOUND,
+                );
+            }
+        }
+    })
+    return c.body(null, HttpStatusCodes.NO_CONTENT);
+}
 
 export const partitionPatch: AppRouteHandler<PartitionPatchRoute> = async (c) => {
-    const { collectionId, partitionId } = c.req.valid("param");
+    const { partitionId } = c.req.valid("param");
     const updates = c.req.valid("json");
-
     if (Object.keys(updates).length === 0) {
         return c.json(
             {
@@ -167,7 +186,6 @@ export const partitionPatch: AppRouteHandler<PartitionPatchRoute> = async (c) =>
             HttpStatusCodes.UNPROCESSABLE_ENTITY,
         );
     }
-
     const [partition] = await db.update(Partition)
         .set(updates)
         .where(eq(Partition.id, partitionId))
@@ -183,6 +201,50 @@ export const partitionPatch: AppRouteHandler<PartitionPatchRoute> = async (c) =>
     }
 
     return c.json(partition, HttpStatusCodes.OK);
+}
+export const partitionBatchPatch: AppRouteHandler<PartitionBatchPatchRoute> = async (c) => {
+    const { ids, updates } = c.req.valid("json");
+    console.log(ids, updates);
+    // if (Object.keys(ids).length === 0) {
+    //     return c.json(
+    //         {
+    //             success: false,
+    //             error: {
+    //                 issues: [
+    //                     {
+    //                         code: ZOD_ERROR_CODES.INVALID_UPDATES,
+    //                         path: [],
+    //                         message: ZOD_ERROR_MESSAGES.NO_UPDATES,
+    //                     },
+    //                 ],
+    //                 name: "ZodError",
+    //             },
+    //         },
+    //         HttpStatusCodes.UNPROCESSABLE_ENTITY,
+    //     );
+    // };
+    const partitions = await db.transaction(async (tx) => {
+        const partitions: Partitions[] = [];
+        for (const id of ids) {
+            const [partition] = await tx.update(Partition)
+                .set(updates)
+                .where(eq(Partition.id, id as string))
+                .returning();
+            partitions.push(partition);
+        }
+        return partitions;
+    });
+
+    if (!partitions) {
+        return c.json(
+            {
+                message: HttpStatusPhrases.NOT_FOUND,
+            },
+            HttpStatusCodes.NOT_FOUND,
+        );
+    }
+
+    return c.json(partitions, HttpStatusCodes.OK);
 }
 
 export const partitionGet: AppRouteHandler<PartitionGetRoute> = async (c) => {

@@ -4,5 +4,6 @@ import * as routes from "./routes";
 import * as handlers from "./handlers";
 
 const router = createRouter()
-  .openapi(routes.get, handlers.get);
+  .openapi(routes.get, handlers.get)
+  .openapi(routes.patch, handlers.patch);
 export default router;

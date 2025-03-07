@@ -107,7 +107,7 @@ export const patch = createRoute({
 });
 
 export const partitionCreate = createRoute({
-    path: '/collections/{id}',
+    path: '/collections/{id}/partitions',
     method: 'post',
     summary: "add a partition",
     description: "add a partition",
@@ -117,13 +117,13 @@ export const partitionCreate = createRoute({
             id: z.string()
         }),
         body: jsonContentRequired(
-            iPartition,
+            z.array(iPartition),
             "create a Partition"
         )
     },
     responses: {
         [HttpStatusCodes.OK]: jsonContent(
-            iPartition,
+            z.array(iPartition),
             "return Partition object"
         ),
         [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
@@ -153,7 +153,7 @@ export const partitionList = createRoute({
 });
 
 export const partitionRemove = createRoute({
-    path: "/collections/{collectionsId}/partitions/{partitionId}",
+    path: "/collections/{collectionId}/partitions/{partitionId}",
     method: "delete",
     summary: "delete an partition",
     description: "delete an partition.",
@@ -180,6 +180,38 @@ export const partitionRemove = createRoute({
     },
 });
 
+export const partitionBatchRemove = createRoute({
+    path: "/collections/{collectionId}/partitions/batch",
+    method: "post",
+    summary: "delete a batch partition",
+    description: "delete a batch partition.",
+    request: {
+        params: z.object({
+            collectionId: z.string({ description: 'collection Id' })
+        }),
+        body: jsonContentRequired(
+            z.object({
+                ids: z.array(z.string())
+            }),
+            "The delete ids",
+        ),
+    },
+    tags: partitionTags,
+    responses: {
+        [HttpStatusCodes.OK]:
+        {
+            description: "partition deleted",
+        },
+        [HttpStatusCodes.NOT_FOUND]: jsonContent(
+            notFoundSchema,
+            "Partition not found",
+        ),
+        [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
+            createErrorSchema(IdUUIDParamsSchema),
+            "The validation error(s)",
+        ),
+    },
+});
 export const partitionPatch = createRoute({
     path: "/collections/{collectionId}/partitions/{partitionId}",
     method: "put",
@@ -206,13 +238,45 @@ export const partitionPatch = createRoute({
             "Partition not found",
         ),
         [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
-            createErrorSchema(uCollection)
+            createErrorSchema(uPartition)
                 .or(createErrorSchema(IdUUIDParamsSchema)),
             "The validation error(s)",
         ),
     },
 });
-
+export const partitionBatchPatch = createRoute({
+    path: "/collections/{collectionId}/partitions/batch",
+    method: "post",
+    summary: "update a batch partition",
+    description: "update a batch partition.",
+    request: {
+        params: z.object({
+            collectionId: z.string({ description: 'collection Id' })
+        }),
+        body: jsonContentRequired(
+            z.object({
+                ids: z.array(z.string()),
+                updates: uPartition
+            }),
+            "The batch partition updates",
+        ),
+    },
+    tags: partitionTags,
+    responses: {
+        [HttpStatusCodes.OK]: jsonContent(
+            z.array(sPartition),
+            "The partition updated",
+        ),
+        [HttpStatusCodes.NOT_FOUND]: jsonContent(
+            notFoundSchema,
+            "Partition not found",
+        ),
+        [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
+            (createErrorSchema(IdUUIDParamsSchema)),
+            "The validation error(s)",
+        ),
+    },
+});
 export const partitionGet = createRoute({
     path: "/collections/{collectionId}/partitions/{partitionId}",
     method: "get",
@@ -248,5 +312,7 @@ export type PatchRoute = typeof patch;
 export type PartitionListRoute = typeof partitionList;
 export type PartitionCreateRoute = typeof partitionCreate;
 export type PartitionRemoveRoute = typeof partitionRemove;
+export type PartitionBatchRemoveRoute = typeof partitionBatchRemove;
 export type PartitionPatchRoute = typeof partitionPatch;
+export type PartitionBatchPatchRoute = typeof partitionBatchPatch;
 export type PartitionGetRoute = typeof partitionGet;

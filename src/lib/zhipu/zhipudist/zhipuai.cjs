@@ -133,9 +133,9 @@ class ChatZhipuAI extends chat_models_1.BaseChatModel {
       value: void 0,
     });
     this.zhipuAIApiKey
-            = fields?.apiKey
-            ?? fields?.zhipuAIApiKey
-            ?? (0, env_1.getEnvironmentVariable)("ZHIPUAI_API_KEY");
+      = fields?.apiKey
+      ?? fields?.zhipuAIApiKey
+      ?? (0, env_1.getEnvironmentVariable)("ZHIPUAI_API_KEY");
     if (!this.zhipuAIApiKey) {
       throw new Error("ZhipuAI API key not found");
     }
@@ -261,6 +261,7 @@ class ChatZhipuAI extends chat_models_1.BaseChatModel {
 
   /** @ignore */
   async completionWithRetry(request, stream, signal, onmessage) {
+
     const makeCompletionRequest = async () => {
       const response = await fetch(this.apiUrl, {
         method: "POST",
@@ -369,10 +370,10 @@ class ChatZhipuAI extends chat_models_1.BaseChatModel {
           message: new messages_1.AIMessageChunk({ content: text }),
           generationInfo: finished
             ? {
-                finished,
-                request_id: id,
-                usage: chunk.usage,
-              }
+              finished,
+              request_id: id,
+              usage: chunk.usage,
+            }
             : undefined,
         });
         await runManager?.handleLLMNewToken(text);

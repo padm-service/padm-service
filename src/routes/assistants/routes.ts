@@ -130,10 +130,10 @@ export const get = createRoute({
 });
 
 export const chatGet = createRoute({
-  path: "/assistants/{assistantId}/chats/{chatId}",
+  path: "/assistants/{assistantId}/chats/{chatId}/message",
   method: "get",
-  summary: "Get a chat",
-  description: "Get a chat.",
+  summary: "Get a chat message",
+  description: "Get a chat message.",
   request: {
     params: z.object({
       assistantId: z.string({ description: "assistant id" }),
@@ -208,32 +208,33 @@ export const chatRemove = createRoute({
   },
 });
 export const chatList = createRoute({
-  path: "/assistants/{id}/chats",
+  path: "/assistants/{assistantId}/chats",
   method: "get",
   summary: "List chat",
-  description: "List all assistant.",
+  description: "List all chat",
   request: {
     params: z.object({
-      id: z.string({ description: "assistant id" }),
+      assistantId: z.string({ description: "assistant id" }),
     }),
   },
   tags: chatTags,
   responses: {
     [HttpStatusCodes.OK]: jsonContent(
-      z.array(sAssistant),
-      "The list of assistant.",
+      z.array(sChat),
+      "The list of chat.",
     ),
   },
 });
 
 export const chatQuery = createRoute({
-  path: "/assistants/{assistantId}/chats/query",
+  path: "/assistants/{assistantId}/chats/{chatId}/query",
   method: "post",
   summary: "Generate a chat",
   description: "Generate outputs with optional services or knowledge.",
   request: {
     params: z.object({
       assistantId: z.string({ description: "assistant id" }),
+      chatId: z.string({ description: "chat id" }),
     }),
     body: jsonContentRequired(
       QueryInit,
@@ -264,6 +265,33 @@ export const chatQuery = createRoute({
     ),
   },
 });
+export const msgCreate = createRoute({
+  path: "/assistants/{assistantId}/chats/{chatId}/message",
+  method: "post",
+  summary: "创建一条消息",
+  description: "创建一条消息",
+  request: {
+    params: z.object({
+      assistantId: z.string({ description: "assistant id" }),
+      chatId: z.string({ description: "chat id" }),
+    }),
+    body: jsonContentRequired(
+      QueryMessage,
+      "创建消息",
+    ),
+  },
+  tags: chatTags,
+  responses: {
+    [HttpStatusCodes.OK]: jsonContent(
+      sMsg,
+      "消息内容",
+    ),
+    [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
+      createErrorSchema(QueryMessage),
+      "The validation error(s)",
+    ),
+  },
+});
 export type ListRoute = typeof list;
 export type CreateRoute = typeof create;
 export type RemoveRoute = typeof remove;
@@ -274,3 +302,4 @@ export type ChatListRoute = typeof chatList;
 export type ChatRemoveRoute = typeof chatRemove;
 export type ChatGetRoute = typeof chatGet;
 export type ChatQueryRoute = typeof chatQuery;
+export type MsgCreateRoute = typeof msgCreate;

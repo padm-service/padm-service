@@ -16,7 +16,12 @@ export const preSignedUrl = createRoute({
   tags,
   request: {
     body: jsonContentRequired(
-      iFile,
+      z.object({
+        name: z.string({ description: "File name." }),
+        method: z.enum(["GET", "PUT"], {
+          description: "Method allowed when using the pre-signed URL."
+        })
+      }),
       "create pre-signed-file",
     ),
   },
@@ -40,7 +45,9 @@ export const create = createRoute({
   tags,
   request: {
     body: jsonContentRequired(
-      iFile,
+      iFile.omit({
+        pre_signed_url: true
+      }),
       "The file info",
     ),
   },

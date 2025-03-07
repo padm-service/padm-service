@@ -8,7 +8,7 @@ import db from "@/db";
 import { File } from "@/db/schema";
 import env from "@/env";
 import { cos } from "@/lib/cos";
-
+import { DAY, SECOND } from "@/lib/time";
 import type { CreateRoute, PreSignedUrl, RemoveRoute } from "./routes";
 
 export const pre_signed_url: AppRouteHandler<PreSignedUrl> = async (c) => {
@@ -25,7 +25,7 @@ export const pre_signed_url: AppRouteHandler<PreSignedUrl> = async (c) => {
       Sign: true,
     },
     (err, data) => {
-      console.log(err, data);
+      // console.log(err, data);
     },
   );
   return c.json({ object_key, url }, HttpStatusCodes.OK);
@@ -34,18 +34,44 @@ export const pre_signed_url: AppRouteHandler<PreSignedUrl> = async (c) => {
 export const create: AppRouteHandler<CreateRoute> = async (c) => {
   const auth = c.get("auth");
   const init = c.req.valid("json");
+  const pre_signed_url = cos.getObjectUrl(
+    {
+      Region: env.COS_REGION!,
+      Bucket: env.COS_BUCKET!,
+      Method: "GET",
+      Key: init.object_key,
+      Expires: ~~((DAY * 356 * 50) / SECOND), // almost 50 years
+      Sign: true
+    },
+    (err, data) => { }
+  );
   const userId = auth.user.id;
-  const [service] = await db.insert(File).values({
+  const [file] = await db.insert(File).values({
     ...init,
     userId,
+    pre_signed_url
   }).returning();
-  return c.json(service, HttpStatusCodes.OK);
+  return c.json(file, HttpStatusCodes.OK);
 };
 
 export const remove: AppRouteHandler<RemoveRoute> = async (c) => {
   const { id } = c.req.valid("param");
+  const file = await db.query.File.findFirst({
+    where(fields, operators) {
+      return operators.eq(fields.id, id);
+    },
+  });
+  cos.deleteObject({
+    Region: env.COS_REGION!,
+    Bucket: env.COS_BUCKET!,
+    Key: file?.object_key as string,
+  }, function (err, data) {
+    // console.log(err || data);
+  });
   const result = await db.delete(File)
     .where(eq(File.id, id));
+  console.log(result);
+
   if (result.rowsAffected === 0) {
     return c.json(
       {
@@ -54,5 +80,5 @@ export const remove: AppRouteHandler<RemoveRoute> = async (c) => {
       HttpStatusCodes.NOT_FOUND,
     );
   }
-  return c.body(null, HttpStatusCodes.NO_CONTENT);
+  return c.body("已删除", HttpStatusCodes.OK);
 };

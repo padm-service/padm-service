@@ -9,7 +9,7 @@ import type { AppRouteHandler } from "@/lib/types";
 import db from "@/db";
 import { User } from "@/db/schema";
 import env from "@/env";
-import { omit } from "@/lib/omit-object";
+import { Omit } from "@/lib/omit-object";
 import { DAY } from "@/lib/time";
 
 import type { LoginRoute, RegisterRoute } from "./routes";
@@ -66,7 +66,7 @@ export const login: AppRouteHandler<LoginRoute> = async (c) => {
       {
         iss: "halo.dev",
         exp: Math.floor(expiry / 1000),
-        user: omit(user, ["secret"]),
+        user: Omit(user, ["secret"]),
       },
       env.TOKEN_SECRET!,
     );

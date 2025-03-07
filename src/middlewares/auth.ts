@@ -59,7 +59,6 @@ export function auth(opts: Options): MiddlewareHandler {
       token = getCookie(ctx, opts.cookie);
     }
     if (!token && opts.apikey) {
-      // exchange token with apikey
       token = await exchange(ctx, ctx.req.header(opts.apikey));
     }
     if (!token) {

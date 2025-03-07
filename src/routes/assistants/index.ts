@@ -12,5 +12,7 @@ const router = createRouter()
   .openapi(routes.chatCreate, handlers.chatCreate)
   .openapi(routes.chatGet, handlers.chatGet)
   .openapi(routes.chatRemove, handlers.chatRemove)
-  .openapi(routes.chatQuery, handlers.chatQuery);
+  .openapi(routes.chatQuery, handlers.chatQuery)
+  .openapi(routes.chatList, handlers.chatList)
+  .openapi(routes.msgCreate, handlers.msgCreate)
 export default router;

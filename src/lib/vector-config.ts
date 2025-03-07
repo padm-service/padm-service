@@ -13,7 +13,7 @@ export const MilvusFields = [
   {
     name: "source",
     data_type: DataType.VarChar,
-    max_length: 100,
+    max_length: 1000,
   },
   {
     name: "langchain_primaryid",
@@ -24,7 +24,7 @@ export const MilvusFields = [
   {
     name: "langchain_text",
     data_type: DataType.VarChar,
-    max_length: 2364,
+    max_length: 65535,
   },
   {
     name: "langchain_vector",
@@ -49,4 +49,4 @@ export const MilvusIndexParams = [{
   },
 }];
 
-export const textSplitter = new CharacterTextSplitter({ chunkSize: 400, chunkOverlap: 100 });
+export const textSplitter = new CharacterTextSplitter({ chunkSize: 1000, chunkOverlap: 200 });

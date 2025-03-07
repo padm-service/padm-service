@@ -1,6 +1,6 @@
-import { ChatZhipuAI } from "@langchain/community/chat_models/zhipuai";
+import { ChatZhipuAI } from "./zhipu/zhipuai";
 import { ZhipuAIEmbeddings } from "@langchain/community/embeddings/zhipuai";
-import { PromptTemplate } from "@langchain/core/prompts";
+// import { PromptTemplate } from "@langchain/core/prompts";
 
 import env from "@/env";
 

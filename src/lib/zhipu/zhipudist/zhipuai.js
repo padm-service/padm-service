@@ -4,6 +4,7 @@ import { convertLangChainToolCallToOpenAI, makeInvalidToolCall, parseToolCall } 
 import { ChatGenerationChunk } from "@langchain/core/outputs";
 import { getEnvironmentVariable } from "@langchain/core/utils/env";
 import { convertToOpenAITool } from "@langchain/core/utils/function_calling";
+import { on } from "events";
 import { convertEventStreamToIterableReadableDataStream } from "node_modules/@langchain/community/dist/utils/event_source_parse.js";
 import { encodeApiKey } from "node_modules/@langchain/community/dist/utils/zhipuai.cjs";
 
@@ -186,9 +187,9 @@ export class ChatZhipuAI extends BaseChatModel {
       value: void 0,
     });
     this.zhipuAIApiKey
-            = fields?.apiKey
-            ?? fields?.zhipuAIApiKey
-            ?? getEnvironmentVariable("ZHIPUAI_API_KEY");
+      = fields?.apiKey
+      ?? fields?.zhipuAIApiKey
+      ?? getEnvironmentVariable("ZHIPUAI_API_KEY");
     if (!this.zhipuAIApiKey) {
       throw new Error("ZhipuAI API key not found");
     }
@@ -398,6 +399,7 @@ export class ChatZhipuAI extends BaseChatModel {
   }
 
   _deserialize(json) {
+
     try {
       return JSON.parse(json);
     }
@@ -408,13 +410,10 @@ export class ChatZhipuAI extends BaseChatModel {
 
   async *_streamResponseChunks(messages, options, runManager) {
     const parameters = {
-      ...this.invocationParams(),
+      ...this.invocationParams(options),
       stream: true,
     };
-    const messagesMapped = messages.map(message => ({
-      role: messageToRole(message),
-      content: message.content,
-    }));
+    const messagesMapped = convertMessagesToZhiPuParams(messages);
     const stream = await this.caller.call(async () => this.createZhipuStream({
       ...parameters,
       messages: messagesMapped,
@@ -424,17 +423,22 @@ export class ChatZhipuAI extends BaseChatModel {
         const deserializedChunk = this._deserialize(chunk);
         const { choices, id } = deserializedChunk;
         const text = choices[0]?.delta?.content ?? "";
-        const finished = !!choices[0]?.finish_reason;
+        const finished = choices[0]?.finish_reason ?? "";
+        // const toolCalls = {
+        //   name: choices[0]?.delta?.tool_calls[0]?.fuction.name ?? "",
+        //   args: choices[0]?.delta?.tool_calls[0]?.arguments,
+        //   type: "tool_call",
+        //   id: choices[0]?.delta?.tool_calls[0]?.id
+        // }
         yield new ChatGenerationChunk({
           text,
-          message: new AIMessageChunk({ content: text }),
+          message: new AIMessageChunk({ content: text, tool_calls: choices[0]?.delta?.tool_calls }),
           generationInfo: finished
             ? {
-                finished,
-                request_id: id,
-                usage: chunk.usage,
-              }
-              
+              finished,
+              request_id: id,
+              usage: chunk.usage,
+            }
             : undefined,
         });
         await runManager?.handleLLMNewToken(text);

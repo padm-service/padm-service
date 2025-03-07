@@ -1,20 +1,19 @@
-import type { MessageContentComplex, MessageFieldWithRole, MessageType } from "@langchain/core/messages";
+import type { MessageContent, MessageContentComplex, MessageFieldWithRole, MessageType } from "@langchain/core/messages";
 import type { ToolDefinition } from "node_modules/@langchain/core/dist/language_models/base";
-
 import { asc, eq } from "drizzle-orm";
-import { SSEStreamingApi, streamSSE } from "hono/streaming";
+import { streamSSE } from "hono/streaming";
 import * as HttpStatusCodes from "stoker/http-status-codes";
 import * as HttpStatusPhrases from "stoker/http-status-phrases";
-
 import type { AppRouteHandler } from "@/lib/types";
-
+import type { Imag } from "@/lib/types";
+import { ChatZhipu, ZhipuAIEmbedding } from "@/lib/llm-config";
+import { MilvusClients } from "@/lib/vector-config";
 import db from "@/db";
-import { Assistant, Chat, Msg } from "@/db/schema";
-import { toolCall } from "@/lib/bigmodel";
+import { Assistant, Chat, Msg, Services } from "@/db/schema";
+// import { toolCall } from "@/lib/bigmodel";
 import { ZOD_ERROR_CODES, ZOD_ERROR_MESSAGES } from "@/lib/constants";
-import { rag } from "@/lib/rag";
 
-import type { ChatCreateRoute, ChatGetRoute, ChatQueryRoute, ChatRemoveRoute, CreateRoute, GetRoute, ListRoute, PatchRoute, RemoveRoute } from "./routes";
+import type { ChatCreateRoute, ChatGetRoute, ChatListRoute, ChatQueryRoute, ChatRemoveRoute, CreateRoute, GetRoute, ListRoute, MsgCreateRoute, PatchRoute, RemoveRoute } from "./routes";
 
 export const create: AppRouteHandler<CreateRoute> = async (c) => {
   const auth = c.get("auth");
@@ -122,9 +121,11 @@ export const chatCreate: AppRouteHandler<ChatCreateRoute> = async (c) => {
   const auth = c.get("auth");
   const init = c.req.valid("json");
   const userId = auth.user.id;
+  const { assistantId } = c.req.valid("param");
   const [chat] = await db.insert(Chat).values({
     ...init,
     userId,
+    assistantId
   }).returning();
   return c.json(chat, HttpStatusCodes.OK);
 };
@@ -139,7 +140,15 @@ export const chatGet: AppRouteHandler<ChatGetRoute> = async (c) => {
   });
   return c.json(msg, HttpStatusCodes.OK);
 };
-
+export const chatList: AppRouteHandler<ChatListRoute> = async (c) => {
+  const { assistantId } = c.req.valid("param");
+  const chats = await db.query.Chat.findMany({
+    where(fields, operators) {
+      return operators.eq(fields.assistantId, assistantId);
+    },
+  })
+  return c.json(chats);
+};
 export const chatRemove: AppRouteHandler<ChatRemoveRoute> = async (c) => {
   const { chatId } = c.req.valid("param");
 
@@ -161,60 +170,203 @@ export const chatRemove: AppRouteHandler<ChatRemoveRoute> = async (c) => {
   });
   return c.body(null, HttpStatusCodes.NO_CONTENT);
 };
-
+export const msgCreate: AppRouteHandler<MsgCreateRoute> = async (c) => {
+  const auth = c.get("auth");
+  const { assistantId, chatId } = c.req.valid("param");;
+  const init = c.req.valid("json");
+  const userId = auth.user.id;
+  const [msg] = await db.insert(Msg).values({
+    ...init,
+    userId,
+    assistantId,
+    chatId
+  }).returning();
+  return c.json(msg, HttpStatusCodes.OK);
+};
 // @ts-ignore
 export const chatQuery: AppRouteHandler<ChatQueryRoute> = async (c) => {
   const init = c.req.valid("json");
+  const auth = c.get("auth");
+  const userId = auth.user.id;
+  const { assistantId, chatId } = c.req.valid("param");
   const { service, knowledge, llm, retrieval } = init;
-  const messages = init.messages as MessageFieldWithRole[];
+  ChatZhipu.model = llm.model;
+  ChatZhipu.temperature = llm.temperature;
+  ChatZhipu.topP = llm.top_p;
+  const messagesdb = init.messages as MessageFieldWithRole[];
+  const commonMes = { userId, assistantId, chatId };
+  await db.insert(Msg).values({
+    ...commonMes,
+    content: messagesdb[messagesdb.length - 1].content,
+    role: "user",
+  })
+  const messages = normalize_messages(init.messages as MessageFieldWithRole[]);
+  if (
+    llm.systemPrompt &&
+    messages.length > 0 &&
+    messages[0].role !== "system"
+  ) {
+    messages.unshift({
+      role: "system",
+      content: llm.systemPrompt,
+    });
+  }
+
   let tools: Array<ToolDefinition> | undefined | any;
-  const systemContent = {
-    role: "system",
-    content: "",
-  };
-  let image = [];
   if (!retrieval) {
     const services = await db.transaction(async (tx) => {
-      const services = [];
-      for (const serviceId in service) {
+      const services: any = [];
+      service.forEach(async (serviceId) => {
         const singleService = await tx.query.Service.findFirst({
           where(fields, operators) {
             return operators.eq(fields.id, serviceId);
           },
         });
         services.push(singleService);
-      }
+      })
       return services;
     });
     tools = [];
-    services.forEach((service) => {
-      (service?.tools as ToolDefinition[]).forEach((tool) => {
-        tools?.push(tool);
-      });
-    });
-
-    if (llm.system_prompt
-      && messages.length > 0
-      && messages[0].role !== "system") {
-      messages.unshift({
-        role: "system",
-        content: llm.system_prompt,
-      });
+    for (const service of services) {
+      for (const tool of service.tools) {
+        tools.push(tool);
+      }
     }
-    systemContent.content = await toolCall("glm-4-air", 1, messages, tools);
-  }
+    const glmWithTools = ChatZhipu?.bindTools(tools);
+    return streamSSE(c, async (stream) => {
+      var tools: any = [];
+      const res = await glmWithTools.stream(messages);
+      for await (const chunk of res) {
+        if (chunk?.tool_calls && chunk?.tool_calls?.length > 0) {
+          tools.push(...chunk.tool_calls);
+        }
+      }
+      if (tools) {
+        for (const tool of tools) {
+          const { name, arguments: args } = tool.function;
+          var [service, endpoint] = name?.split("::") ?? [];
+          const url = `${new URL(c.req.url).origin}/services/${service}/fetch${endpoint}`;
+          console.log(url);
+          const headers = new Headers(c.req.raw.headers);
+          headers.delete('Content-Length');
+          const req = new Request(url, {
+            method: "POST",
+            headers,
+            body: args,
+          });
+          const body = await fetch(req).then(res => res.text());
+          messages.push({
+            tool_call_id: tool?.id ?? "",
+            role: "tool",
+            content: body,
+          });
+        }
+        const res = await glmWithTools.stream(messages);
+        let fullContent = '';
+        for await (const chunk of res) {
+          fullContent += chunk.content;
+          if (chunk.response_metadata.finished === "stop") {
+            await db.insert(Msg).values({
+              ...commonMes,
+              content: [{ type: 'text', text: fullContent }],
+              role: "assistant",
+            })
+            return;
+          }
+          await stream.writeSSE({
+            event: "message",
+            data: JSON.stringify(chunk.content),
+          });
+        }
+      }
+    })
+  };
 
   if (retrieval && knowledge) {
-    const knowledgeRes = await rag(messages[0].content as string, "collectionID", ["partitionIDs"], "prompt", "model") as any;
-    systemContent.content = knowledgeRes.message;
-    image = knowledgeRes.images;
-  }
-
-  // const messages = normalize_messages(init.messages);
-  return streamSSE(c, async (stream) => {
-    await stream.writeSSE({
-      event: "message",
-      data: JSON.stringify(systemContent),
+    // const knowledgeRes = await rag(messages[0].content as string, "collectionID", ["partitionIDs"], "prompt", "model") as any;
+    const queryVector = await ZhipuAIEmbedding.embedQuery(messages[messages.length - 1].content as string);
+    await MilvusClients.loadCollection({ collection_name: knowledge.collection });
+    const res = await MilvusClients.search({
+      collection_name: knowledge.collection,
+      // partition_names: knowledge.partition,
+      data: queryVector,
+      limit: 3,
     });
-  });
-};
+    await MilvusClients.releaseCollection({ collection_name: knowledge.collection });
+    let context = "";
+    const images: Imag[] = [];
+    for (const r of res.results) {
+      if (r.image !== "") {
+        images.push({
+          image_text: r.langchain_text,
+          image_url: r.image,
+        });
+      }
+      else {
+        context += r.langchain_text;
+      }
+    }
+
+    const PROMPT_TEMPLATE = `
+            使用<context>内的信息对<question>标记中包含的问题提供一个简明的答案。
+            如果你不知道答案，就说你不知道，不要试图编造答案。
+            <context>
+            ${context}
+            </context>
+    
+            <question>
+            ${messages[messages.length - 1].content}
+            </question>`;
+    messages[messages.length - 1].content = PROMPT_TEMPLATE;
+    return streamSSE(c, async (stream) => {
+      const res = await ChatZhipu.stream(messages);
+      let fullContent = '';
+      for await (const chunk of res) {
+        fullContent += chunk.content;
+        if (chunk.response_metadata.finished === "stop") {
+          await db.insert(Msg).values({
+            ...commonMes,
+            content: [{ type: 'text', text: fullContent }],
+            role: "assistant",
+          })
+          return;
+        }
+        await stream.writeSSE({
+          event: "message",
+          data: JSON.stringify(chunk.content),
+        });
+        if (images) {
+          await stream.writeSSE({
+            event: "img",
+            data: JSON.stringify(images),
+          });
+        }
+      }
+    })
+
+  }
+}
+function normalize(cs: MessageContentComplex[]): string {
+  let text = "";
+  for (const c of cs) {
+    switch (c.type) {
+      case "text":
+        text += c.text;
+        break;
+      case "file":
+        text += `
+图片链接：${c.file.url}
+图片类型：${c.file.type}
+图片大小：${c.file.size} 字节`;
+        break;
+    }
+  }
+  return text;
+}
+
+function normalize_messages(msgs: MessageFieldWithRole[]): MessageFieldWithRole[] {
+  return msgs.map(({ role, content }) => ({
+    role,
+    content: normalize(content as MessageContentComplex[])
+  }));
+}

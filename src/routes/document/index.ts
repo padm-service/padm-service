@@ -12,5 +12,7 @@ const router = createRouter()
     .openapi(routes.partitionCreate, handlers.partitionCreate)
     .openapi(routes.partitionRemove, handlers.partitionRemove)
     .openapi(routes.partitionPatch, handlers.partitionPatch)
-    .openapi(routes.partitionGet, handlers.partitionGet);
+    .openapi(routes.partitionGet, handlers.partitionGet)
+    .openapi(routes.partitionBatchPatch, handlers.partitionBatchPatch)
+    .openapi(routes.partitionBatchRemove, handlers.partitionBatchRemove);
 export default router;

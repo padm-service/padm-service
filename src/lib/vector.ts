@@ -1,12 +1,16 @@
 import type { BufferLoader } from "langchain/document_loaders/fs/buffer";
-
+import * as fs from 'fs';
 import { DocxLoader } from "@langchain/community/document_loaders/fs/docx";
 import { load } from "cheerio";
 import Mammoth from "mammoth";
-
+import { download, deleteFile } from "./download";
 import { ChatZhipu, ZhipuAIEmbedding } from "./llm-config";
 import { MilvusClients, MilvusFields, MilvusIndexParams, textSplitter } from "./vector-config";
-
+import { PDFLoader } from "@langchain/community/document_loaders/fs/pdf";
+import { CSVLoader } from "@langchain/community/document_loaders/fs/csv";
+// import { PPTXLoader } from "@langchain/community/document_loaders/fs/pptx";
+import { TextLoader } from "langchain/document_loaders/fs/text";
+import { BaseDocumentLoader } from "@langchain/core/document_loaders/base";
 export function convertWordToHtml(wordFilePath: string) {
   return new Promise((resolve, reject) => {
     Mammoth
@@ -32,27 +36,43 @@ export function extractImageUrls(html: any) {
   return imageUrls;
 };
 
-export async function textToSQL(loader: BufferLoader, collectionName: string, partitionName: string) {
+export async function toText(loader: BufferLoader | BaseDocumentLoader | TextLoader, collectionName: string, partitionName: string, url: string) {
   const documents = await loader.load();
   const docs = await textSplitter.splitDocuments(documents);
-  docs.forEach(async (doc) => {
-    doc.metadata.image = "";
+  const datas = await Promise.all(docs.map(async (doc) => {
     const embedding = await ZhipuAIEmbedding.embedQuery(doc.pageContent);
-    const data = {
-      source: doc.metadata.source,
+    return {
+      source: url,
       langchain_text: doc.pageContent,
       langchain_vector: embedding,
       image: "",
     };
-    await MilvusClients.insert({
-      collection_name: collectionName,
-      partition_name: partitionName,
-      fields_data: [data],
-    });
+  }));
+  const res = await MilvusClients.insert({
+    collection_name: collectionName,
+    partition_name: partitionName,
+    fields_data: datas,
   });
+  console.log(res);
+
+  // for (const doc of docs) {
+  //   doc.metadata.image = "";
+  //   const embedding = await ZhipuAIEmbedding.embedQuery(doc.pageContent);
+  //   const res = await MilvusClients.insert({
+  //     collection_name: collectionName,
+  //     partition_name: partitionName,
+  //     fields_data: [{
+  //       source: url,
+  //       langchain_text: doc.pageContent,
+  //       langchain_vector: embedding,
+  //       image: "",
+  //     }],
+  //   });
+  //   console.log(res);
+  // }
 }
 
-function imageToSQL(collectionName: string, partitionName: string, imageUrls: string[], model?: string) {
+async function imageToSQL(collectionName: string, partitionName: string, imageUrls: string[], model: string = 'glm-4v-flash', url: string) {
   if (model) {
     ChatZhipu.model = model;
   }
@@ -61,7 +81,7 @@ function imageToSQL(collectionName: string, partitionName: string, imageUrls: st
     const res = await ChatZhipu.invoke(messages);
     const vector = await ZhipuAIEmbedding.embedQuery(res.content as string);
     const data = {
-      source: "./dada",
+      source: url,
       langchain_text: res.content,
       langchain_vector: vector,
       image: imageUrl,
@@ -74,7 +94,7 @@ function imageToSQL(collectionName: string, partitionName: string, imageUrls: st
   });
 }
 
-export async function createOneCollection(collectionId: string) {
+export async function createCollection(collectionId: string) {
   await MilvusClients.createCollection({
     collection_name: collectionId,
     fields: MilvusFields,
@@ -98,50 +118,69 @@ export async function getPartition(collectionId: string) {
 
 export async function getPartitionContent(collectionId: string, partitionId: string) {
   await MilvusClients.loadCollection({ collection_name: collectionId });
-  // MilvusClients.search;
+  MilvusClients.search;
   const result = await MilvusClients.query({
     collection_name: collectionId,
     filter: "langchain_text like \"\"",
     partition_names: [partitionId],
     output_fields: ["langchain_text"],
   });
-
   await MilvusClients.releaseCollection({ collection_name: collectionId });
   return result.data;
 }
 
-export async function vector(filePath: string, collectionId: string, partitionID: string, model?: string | undefined) {
+export async function vector(url: string, collectionId: string, partitionID: string, fileName: string, model?: string | undefined) {
   await MilvusClients.loadCollection({ collection_name: collectionId });
-  MilvusClients.createPartition({
+  await MilvusClients.createPartition({
     collection_name: collectionId,
     partition_name: partitionID,
   });
+  const filePath = await download(url, fileName);
+  console.log(filePath);
+
   const pathSplit = filePath.split(".");
-  const length = pathSplit.length;
-  const suffix = pathSplit[length - 1];
+  const suffix = pathSplit.pop();
   let imageUrls: string[] = [];
   switch (suffix) {
+    case 'doc':
     case "docx": {
       const loader = new DocxLoader(filePath);
-      textToSQL(loader, collectionId, partitionID);
+      await toText(loader, collectionId, partitionID, url);
       try {
         const html = await convertWordToHtml(filePath);
         imageUrls = extractImageUrls(html);
         if (imageUrls) {
-          imageToSQL(collectionId, partitionID, imageUrls, model);
+          await imageToSQL(collectionId, partitionID, imageUrls, model, url);
         }
       }
       catch (error) {
         console.log(error);
       }
       break;
-    }
+    };
     case "pdf": {
-      // pdf逻辑
+      const loader = new PDFLoader(filePath);
+      await toText(loader, collectionId, partitionID, url);
       break;
-    }
+    };
+    case 'txt': {
+      const loader = new TextLoader(filePath);
+      await toText(loader, collectionId, partitionID, url);
+      break;
+    };
+    case 'csv': {
+      const loader = new CSVLoader(filePath);
+      await toText(loader, collectionId, partitionID, url);
+      break;
+    };
+    // case 'ppt': {
+    //   const loader = new PPTXLoader("path/to/bitcoin.pptx");
+    //   await toText(loader, collectionId, partitionID, url);
+    //   break;
+    // };
     default: break;
   }
+  await deleteFile(filePath);
   await MilvusClients.releaseCollection({ collection_name: collectionId });
 }
 
@@ -155,7 +194,10 @@ export async function deletePartition(collectionId: string, partitionID: string)
 
 // renameCollection("knowledge1", "knowledge2");
 // await createOneCollection('knowledge1')
-// const qr = await getPartitionContent('knowledge2', '_default')
-// vector("C:\\Users\\admin\\Desktop\\test.docx", 'knowledge2', '1', 'glm-4v-flash')
+// const qr = await getPartitionContent('kxjoaanx68fggokwn6inuprr', 'kimx3y5y0lga90ws31ngwi5y')
+// console.log(qr);
+
+// vector("C:\\Users\\wbl\\Desktop\\草莓种植知识汇总版.docx", 'kxjoaanx68fggokwn6inuprr', 'oxjujx4c9wbgtf1df3jhcvol', "草莓种植知识汇总版.docx")
 // deleteCollection('knowledge1')
-// console.log(await getPartitionContent('knowledge2', '1'));
+// const res = await getPartitionContent('xazjuzxg57rjze95o3hq9q0y', 'dyvlcs7hgvbce3fimb2fx67f')
+// console.log(res);

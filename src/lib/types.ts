@@ -37,22 +37,26 @@ export type AppRouteHandler<R extends RouteConfig> = RouteHandler<R, AppBindings
 // export const zContent = generateZodSchemaVariableStatement(MessageFieldWithRole)
 export const QueryMessage = z.object({
   role: z.enum(["system", "user", "assistant", "function"]),
-  content: z.string(),
+  content: z.array(z.any()),
 });
 
 export const LLM = z
   .object({
     model: z.string({ description: "语言模型" }).default("glm-4-air"),
-    system_prompt: z.string({ description: "系统提示词" }).default(""),
+    systemPrompt: z.string({ description: "系统提示词" }).default(""),
     temperature: z.number({ description: "温度系数" }).gt(0).default(0.95),
     top_p: z.number({ description: "核采样率" }).gt(0).default(0.7),
   });
+export const Knowledge = z.object({
+  collection: z.string({ description: "知识库 ID" }),
+  partition: z.array(z.string({ description: "文件 ID" }).optional())
+})
 
 export const QueryInit = z
   .object({
     messages: z.array(QueryMessage, { description: "消息" }),
-    service: z.array(z.string({ description: "服务 ID" })).optional(),
-    knowledge: z.string({ description: "知识库 ID" }).optional(),
+    service: z.array(z.string({ description: "服务 ID" })),
+    knowledge: Knowledge,
     llm: LLM,
-    retrieval: z.boolean({ description: "是否使用外部知识库" }).optional(),
+    retrieval: z.boolean({ description: "是否使用外部知识库" }),
   });

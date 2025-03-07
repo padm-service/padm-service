@@ -2,15 +2,15 @@ import { z } from "@hono/zod-openapi";
 import { createId } from "@paralleldrive/cuid2";
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
-import type { MessageContentComplex } from "@langchain/core/messages";
-import { omit } from "@/lib/omit-object";
-import { number } from "zod";
+// import type { MessageContentComplex } from "@langchain/core/messages";
+import { Omit } from "@/lib/omit-object";
+import { LLM } from "@/lib/types";
 export const Base = {
   id: text("id").$defaultFn(() => createId()).primaryKey(),
   created_at: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
   updated_at: integer("updated_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()).$onUpdate(() => new Date()),
 };
-export const MsgBase = omit(Base, ["updated_at"]);
+export const MsgBase = Omit(Base, ["updated_at"]);
 // tasks Table
 // export const tasks = sqliteTable("tasks", {
 //   id: integer("id", { mode: "number" })
@@ -52,14 +52,18 @@ export const User = sqliteTable("user", {
   email: text("email").notNull(),
   level: integer("level").notNull().default(0),
   state: text("state").notNull().default("normal"),
-  permission: text("permission").notNull().default("[]"),
+  permission: text("permission", { mode: "json" }).notNull().default([]),
   scope: text("scope").notNull().default("user"),
   secret: text("secret").notNull(),
 });
 export type Users = typeof User.$inferSelect;
-export const sUser = createSelectSchema(User);
+export const sUser = createSelectSchema(User).extend({
+  permission: z.array(z.string()),
+});
 
-export const iUser = createInsertSchema(User)
+export const iUser = createInsertSchema(User).extend({
+  permission: z.array(z.string()).default([]),
+});
 
 export const uUser = sUser.partial();
 
@@ -71,7 +75,7 @@ export const Key = sqliteTable("key", {
   prefix: text("prefix").notNull(),
   secret: text("secret").notNull(),
   secret_truncated: text("secret_truncated").notNull(),
-  services: text("services", { mode: "json" }).notNull(),
+  services: text("services", { mode: "json" }).notNull().default([]),
   userId: text("userId").notNull(),
 });
 export type Keys = typeof Key.$inferSelect;
@@ -84,11 +88,8 @@ export const iKey = createInsertSchema(Key,
   secret: true,
   prefix: true,
   secret_truncated: true,
-  id: true,
-  created_at: true,
-  updated_at: true,
 }).extend({
-  services: z.array(z.string()),
+  services: z.array(z.string()).default([]),
 });
 ;
 
@@ -99,73 +100,74 @@ export const Chat = sqliteTable("chat", {
   ...Base,
   summary: text("summary").notNull(),
   userId: text("userId").notNull(),
-  assistantId: text("assistantId", { mode: "json" }).notNull(),
+  assistantId: text("assistantId").notNull(),
 });
 
-export const sChat = createSelectSchema(Chat).extend({
-  assistantId: z.array(z.string())
-});
+export const sChat = createSelectSchema(Chat);
 
 export const iChat = createInsertSchema(Chat).omit({
-  id: true,
-  created_at: true,
-  updated_at: true,
-}).extend({
-  assistantId: z.array(z.string())
+  userId: true,
+  assistantId: true,
 });
 
 export const uChat = iChat.partial();
 // Msg Table
 export const Msg = sqliteTable("msg", {
   ...MsgBase,
-  content: text("content").$type<MessageContentComplex[]>().notNull(),
+  content: text("content", { mode: "json" }).notNull().default([]),
   role: text("role").notNull(),
   assistantId: text("assistantId").notNull(),
   chatId: text("chatId").notNull(),
   userId: text("userId").notNull(),
-  model: text("model").notNull(),
-  temperature: text("temperature").notNull(),
-  top_p: text("top_p").notNull(),
-  knowledge: text("knowledge").notNull(),
-  retrieval: integer("retrieval", { mode: "boolean" }).notNull(),
-  systemPrompt: text("systemPrompt").notNull().default(""),
+  // model: text("model").notNull(),
+  // temperature: text("temperature").notNull(),
+  // top_p: text("top_p").notNull(),
+  // knowledge: text("knowledge", { mode: "json" }).notNull().default([]),
+  // retrieval: integer("retrieval", { mode: "boolean" }).notNull(),
+  // systemPrompt: text("systemPrompt").notNull().default(""),
 });
 export const sMsg = createSelectSchema(Msg).extend({
   content: z.array(z.any()),
+  // knowledge: z.array(z.string()),
 });
 
 export const iMsg = createInsertSchema(Msg).omit({
-  id: true,
-  created_at: true,
+  userId: true,
 }).extend({
-  service: z.array(z.string()),
+  // service: z.array(z.string()),
   content: z.array(z.any()),
+  // knowledge: z.array(z.string()),
 });
 
 export const uMsg = iMsg.partial();
 // Assistance Table
-export const Assistant = sqliteTable("assistance", {
+export const Assistant = sqliteTable("assistant", {
   ...Base,
   name: text("name").notNull(),
-  icon: text("icon").notNull().default("🌐"),
+  icon: text("icon").notNull().default('🤖'),
   description: text("description").notNull(),
-  knowledge: text("knowledge"),
-  level: integer("level").notNull().default(1),
+  knowledge: text("knowledge", { mode: "json" }).default([]),
+  level: integer("level").notNull().default(0),
   userId: text("userId"),
-  services: text("services", { mode: "json" }),
+  services: text("services", { mode: "json" }).default([]),
+  llm: text("llm", { mode: "json" }).notNull().default({}),
+  // model: text("model").notNull().default("glm-3-turbo"),
+  // system_prompt: text('system_prompt').notNull().default(""),
+  // temperature: integer("temperature").notNull().default(0.95),
+  // top_p: integer("top_p").notNull().default(0.7)
 });
 
 export const sAssistant = createSelectSchema(Assistant).extend({
-  services: z.array(z.string()),
+  services: z.array(z.string()).default([]),
+  knowledge: z.array(z.string()).default([]),
+  llm: LLM,
 });
 
 export const iAssistant = createInsertSchema(Assistant,
-).omit({
-  id: true,
-  created_at: true,
-  updated_at: true,
-}).extend({
-  services: z.array(z.string()),
+).extend({
+  services: z.array(z.string()).default([]),
+  knowledge: z.array(z.string()).default([]),
+  llm: LLM.default({ model: "glm-4-air", systemPrompt: "", temperature: 0.95, top_p: 0.7 }),
 });
 
 export const uAssistant = iAssistant.partial();
@@ -177,37 +179,31 @@ export const K2t = sqliteTable("k2t", {
   token: text("token").notNull(),
 });
 export const sK2t = createSelectSchema(K2t);
-export const iK2t = createInsertSchema(K2t).omit({
-  id: true,
-});
-
+export const iK2t = createInsertSchema(K2t);
 // Seivice Table
 export const Service = sqliteTable("service", {
   ...Base,
-  readme: text("readme").notNull(),
-  level: integer("level").notNull(),
-  schema: text("schema", { mode: "json" }),
-  tools: text("tools", { mode: "json" }).default("[]"),
-  // tools: text("tools").$type<ToolDefinition[]>().notNull(),
-  unit_price: integer("unit_price").notNull(),
+  icon: text("icon").notNull().default('🌲'),
+  readme: text("readme").notNull().default(""),
+  level: integer("level").notNull().default(0),
+  schema: text("schema", { mode: "json" }).default({}),
+  tools: text("tools", { mode: "json" }).default([]),
+  unit_price: integer("unit_price").notNull().default(0),
   userId: text("userId").notNull(),
 });
 export const sService = createSelectSchema(Service).extend({
-  schema: z.string(),
-  tools: z.array(z.string()),
+  schema: z.any(),
+  tools: z.array(z.any()),
 });
 
 export const iService = createInsertSchema(Service).omit({
-  id: true,
-  created_at: true,
-  updated_at: true,
-  tools: true,
+  userId: true,
 }).extend({
   schema: z.any(),
-  tools: z.array(z.string()),
+  tools: z.array(z.any()).default([]),
 });
 export const uService = iService.partial();
-
+export type Services = typeof Service.$inferSelect;
 // Node Table
 export const Node = sqliteTable("node", {
   ...Base,
@@ -220,9 +216,7 @@ export const Node = sqliteTable("node", {
 export const sNode = createSelectSchema(Node);
 
 export const iNode = createInsertSchema(Node).omit({
-  id: true,
-  created_at: true,
-  updated_at: true,
+  userId: true,
 });
 export const uNode = iNode.partial();
 
@@ -230,20 +224,18 @@ export const uNode = iNode.partial();
 export const File = sqliteTable("file", {
   ...Base,
   userId: text("userId"),
-  type: text("type"),
-  object_key: text("object_key"),
-  state: text("state"),
-  pre_signed_url: text("pre_signed_url"),
-  size: integer("size"),
+  type: text("type").notNull().notNull(),
+  object_key: text("object_key").notNull(),
+  state: text("state").default("uploaded"),
+  pre_signed_url: text("pre_signed_url").notNull(),
+  size: integer("size").notNull(),
   method: text("method", { enum: ["GET", "PUT"] }).notNull(),
-  name: text("name"),
+  name: text("name").notNull(),
 });
 export const sFile = createSelectSchema(File);
 
 export const iFile = createInsertSchema(File).omit({
-  id: true,
-  created_at: true,
-  updated_at: true,
+  userId: true,
 });
 export const uFile = iFile.partial();
 
@@ -254,28 +246,37 @@ export const Partition = sqliteTable('partition', {
   userId: text("userId").notNull(),
   collectionId: text("collectionId").notNull(),
   url: text('url').notNull(),
-  file_size: text('fileSize').notNull(),
+  size: integer('size').notNull(),
   state: text('state').notNull(),
-  segment: integer('segment').notNull(),
-  file_name: text('fileName').notNull(),
+  segment: integer('segment').notNull().default(0),
+  fileId: text("fileId").notNull(),
+  expire: text("expire").notNull().default("normal"),
 })
 export type Partitions = typeof Partition.$inferSelect;
+export type Partitionse = typeof Partition.$inferInsert;
 export const sPartition = createSelectSchema(Partition);
-export const iPartition = createInsertSchema(Partition);
+export const iPartition = createInsertSchema(Partition).omit({
+  userId: true,
+  collectionId: true,
+});
 export const uPartition = iPartition.partial();
 
 //Document Table
 export const Collection = sqliteTable('collection', {
   ...Base,
-  name: text("name"),
+  name: text("name").notNull(),
   userId: text("userId").notNull(),
-  partitionId: text("partitionID", { mode: "json" }).notNull(),
+  partitionId: text("partitionID", { mode: "json" }).notNull().default([]),
+  description: text("description").notNull(),
+  used: integer("used").notNull().default(0),
 })
 export const sCollection = createSelectSchema(Collection).extend({
   partitionId: z.array(z.string())
 });;
-export const iCollection = createInsertSchema(Collection).extend({
-  partitionId: z.array(z.string())
-});
+export const iCollection = createInsertSchema(Collection).omit
+  ({
+    userId: true,
+  }).extend({
+    partitionId: z.array(z.string()).default([])
+  });
 export const uCollection = iCollection.partial();
-
