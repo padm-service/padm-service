@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "npm run lint --fix",
-    "build": "tsc && tsc-alias"
+    "build": "tsc && tsc-alias && node -e \"const fs=require('fs'); fs.cpSync('src/lib/zhipu', 'dist/src/lib/zhipu', {recursive:true})\""
   },
   "dependencies": {
     "@hono/node-server": "^1.13.2",

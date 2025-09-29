@@ -2,9 +2,10 @@ FROM oven/bun:latest
 
 WORKDIR /app
 
-COPY . .
+COPY package.json bun.lockb ./
+RUN bun install
 
-RUN bun i
+COPY . .
 RUN bun run build
 
 EXPOSE 9999

@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, or } from "drizzle-orm";
 import * as HttpStatusCodes from "stoker/http-status-codes";
 import * as HttpStatusPhrases from "stoker/http-status-phrases";
 import { proxy } from 'hono/proxy'
@@ -48,10 +48,12 @@ export const list: AppRouteHandler<ListRoute> = async (c) => {
   const auth = c.get("auth");
   const services = await db.query.Service.findMany({
     where(fields, operators) {
-      return operators.eq(fields.userId, auth.user.id);
+      return or(operators.eq(fields.userId, auth.user.id),operators.eq(fields.level, -1));
     },
   },
   );
+  console.log(services);
+  
   return c.json(services);
 };
 
