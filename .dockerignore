@@ -1,5 +1,4 @@
 node_modules
 .gitignore
-bun.lockb
 *.log
 .vscode
