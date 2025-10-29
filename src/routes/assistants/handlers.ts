@@ -1,6 +1,6 @@
 import type { MessageContent, MessageContentComplex, MessageFieldWithRole, MessageType } from "@langchain/core/messages";
 import type { ToolDefinition } from "node_modules/@langchain/core/dist/language_models/base";
-import { asc, eq } from "drizzle-orm";
+import { asc, eq, or } from "drizzle-orm";
 import { streamSSE } from "hono/streaming";
 import * as HttpStatusCodes from "stoker/http-status-codes";
 import * as HttpStatusPhrases from "stoker/http-status-phrases";
@@ -47,7 +47,7 @@ export const list: AppRouteHandler<ListRoute> = async (c) => {
   const auth = c.get("auth");
   const assistants = await db.query.Assistant.findMany({
     where(fields, operators) {
-      return operators.eq(fields.userId, auth.user.id);
+      return or(operators.eq(fields.userId, auth.user.id),operators.eq(fields.level,-1));
     },
   },
   );
