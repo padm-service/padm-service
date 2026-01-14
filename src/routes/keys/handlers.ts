@@ -29,8 +29,8 @@ export const list: AppRouteHandler<ListRoute> = async (c) => {
 };
 
 export const create: AppRouteHandler<CreateRoute> = async (c) => {
-  const auth = c.get("auth");
-  const init = c.req.valid("json");
+  const auth = c.get("auth");//后端从中间件获取已登录的用户信息
+  const init = c.req.valid("json");//接受前端请求体发送的JSON数据
   const prefix = "sk";
   const seed = crypto.randomUUID();
   const real_secret = hexify(await digest("sha-1", seed));
@@ -46,7 +46,7 @@ export const create: AppRouteHandler<CreateRoute> = async (c) => {
       secret_truncated,
       userId,
     }).returning();
-    await tx.insert(K2t).values({
+    await tx.insert(K2t).values({//K2t是表名
       keyId: key.id,
       token: token_surrealdb,
     });

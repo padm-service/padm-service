@@ -259,6 +259,7 @@ export const allService: any = async (c: Context) => {
   const headers = new Headers({
     "content-type": ctype ?? "application/json",
   });
+  console.log(url)
   return fetch(url, {
     method: c.req.raw.method,
     headers,

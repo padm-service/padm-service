@@ -1,3 +1,4 @@
+//消息队列的生产者
 import type { Partitions } from "@/db/schema";
 import env from "@/env";
 import amqp from 'amqplib';

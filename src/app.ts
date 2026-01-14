@@ -7,6 +7,7 @@ import services from "@/routes/services";
 import colletions from "@/routes/document"
 import users from "@/routes/users"
 import admin from "@/routes/admin"
+import bills from "@/routes/bills"
 import { consume } from "./lib/receive";
 const app = createApp();
 
@@ -18,7 +19,8 @@ const routes = [
   files,
   colletions,
   users,
-  admin
+  admin,
+  bills
 ] as const;
 
 routes.forEach((route) => {

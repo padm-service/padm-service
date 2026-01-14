@@ -3,14 +3,19 @@ import { ChatZhipu, ZhipuAIEmbedding } from "./llm-config";
 import { MilvusClients } from "./vector-config";
 
 export async function rag(query: string, collectionID: string, partitionIDs: string[], systemPrompt: string, model: string) {
+  //Embedding将问题转化为向量
   const queryVector = await ZhipuAIEmbedding.embedQuery(query);
+  //RAG检索
+  //加载集合
   await MilvusClients.loadCollection({ collection_name: collectionID });
+  //执行搜索
   const res = await MilvusClients.search({
     collection_name: collectionID,
     partition_names: partitionIDs,
     data: queryVector,
     limit: 3,
   });
+  //释放集合
   await MilvusClients.releaseCollection({ collection_name: collectionID });
   let context = "";
   const images: Imag[] = [];
@@ -25,14 +30,14 @@ export async function rag(query: string, collectionID: string, partitionIDs: str
       context += r.langchain_text;
     }
   }
-
+//生成
   const PROMPT_TEMPLATE = `${systemPrompt}
         使用<context>内的信息对<question>标记中包含的问题提供一个简明的答案。
         如果你不知道答案，就说你不知道，不要试图编造答案。
         <context>
         ${context}
-        </context>
-
+        </context> 
+ 
         <question>
         ${query}
         </question>`;

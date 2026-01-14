@@ -1,3 +1,4 @@
+//RabbitMQ的消息队列消费者
 import { eq } from "drizzle-orm";
 import type { Partitions } from "@/db/schema";
 import db from "@/db";

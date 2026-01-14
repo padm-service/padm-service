@@ -132,7 +132,7 @@ export const partitionRemove: AppRouteHandler<PartitionRemoveRoute> = async (c) 
     await db.transaction(async (tx) => {
         const result = await tx.delete(Partition).where(eq
             (Partition.id, partitionId));
-        await deletePartition(collectionId, partitionId);
+        await deletePartition(collectionId, partitionId);//删除时，同时清楚相关向量库的知识
         if (result.rowsAffected === 0) {
             return c.json(
                 {

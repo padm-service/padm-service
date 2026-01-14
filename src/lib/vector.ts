@@ -1,3 +1,4 @@
+//知识库构建与管理，将知识库存入向量数据库，为RAG系统做准备 
 import type { BufferLoader } from "langchain/document_loaders/fs/buffer";
 import * as fs from 'fs';
 import { DocxLoader } from "@langchain/community/document_loaders/fs/docx";
@@ -11,6 +12,7 @@ import { CSVLoader } from "@langchain/community/document_loaders/fs/csv";
 // import { PPTXLoader } from "@langchain/community/document_loaders/fs/pptx";
 import { TextLoader } from "langchain/document_loaders/fs/text";
 import { BaseDocumentLoader } from "@langchain/core/document_loaders/base";
+import pLimit from 'p-limit';
 export function convertWordToHtml(wordFilePath: string) {
   return new Promise((resolve, reject) => {
     Mammoth
@@ -39,21 +41,44 @@ export function extractImageUrls(html: any) {
 export async function toText(loader: BufferLoader | BaseDocumentLoader | TextLoader, collectionName: string, partitionName: string, url: string) {
   const documents = await loader.load();
   const docs = await textSplitter.splitDocuments(documents);
+  const limit = pLimit(10);
   const datas = await Promise.all(docs.map(async (doc) => {
-    const embedding = await ZhipuAIEmbedding.embedQuery(doc.pageContent);
-    return {
-      source: url,
-      langchain_text: doc.pageContent,
-      langchain_vector: embedding,
-      image: "",
-    };
+    limit(async () => {
+       const embedding = await ZhipuAIEmbedding.embedQuery(doc.pageContent);
+       return {
+        source: url,
+        langchain_text: doc.pageContent,
+        langchain_vector: embedding,
+        image: "",
+        };
+      })
+   
   }));
+  const fieldsData = datas.filter(item => item !== undefined); // 过滤掉可能的 undefined
   const res = await MilvusClients.insert({
     collection_name: collectionName,
     partition_name: partitionName,
-    fields_data: datas,
+    fields_data: fieldsData,
   });
   console.log(res);
+// export async function toText(loader: BufferLoader | BaseDocumentLoader | TextLoader, collectionName: string, partitionName: string, url: string) {
+//   const documents = await loader.load();
+//   const docs = await textSplitter.splitDocuments(documents);
+//   const datas = await Promise.all(docs.map(async (doc) => {
+//     const embedding = await ZhipuAIEmbedding.embedQuery(doc.pageContent);
+//     return {
+//       source: url,
+//       langchain_text: doc.pageContent,
+//       langchain_vector: embedding,
+//       image: "",
+//     };
+//   }));
+//   const res = await MilvusClients.insert({
+//     collection_name: collectionName,
+//     partition_name: partitionName,
+//     fields_data: datas,
+//   });
+//   console.log(res);
 
   // for (const doc of docs) {
   //   doc.metadata.image = "";
@@ -78,6 +103,7 @@ async function imageToSQL(collectionName: string, partitionName: string, imageUr
   }
   imageUrls.forEach(async (imageUrl) => {
     const messages = [{ role: "user", content: [{ type: "image_url", image_url: { url: imageUrl } }, { type: "text", text: "请描述这张图片" }] }];
+    //调用智谱AI的多模态模型生成图片描述
     const res = await ChatZhipu.invoke(messages);
     const vector = await ZhipuAIEmbedding.embedQuery(res.content as string);
     const data = {

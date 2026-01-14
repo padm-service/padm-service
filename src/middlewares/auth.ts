@@ -1,3 +1,4 @@
+//认证中间件，用于处理用户身份验证
 import type { Context, MiddlewareHandler } from "hono";
 
 import argon2 from "argon2";

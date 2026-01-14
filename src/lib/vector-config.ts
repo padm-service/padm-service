@@ -1,4 +1,4 @@
-import { CharacterTextSplitter } from "@langchain/textsplitters";
+import { CharacterTextSplitter } from "@langchain/textsplitters";//文本分割器
 import { DataType, IndexType, MetricType, MilvusClient } from "@zilliz/milvus2-sdk-node";
 
 import env from "@/env";

@@ -15,7 +15,7 @@ import { DAY } from "@/lib/time";
 import type { LoginRoute, RegisterRoute } from "./routes";
 
 export const register: AppRouteHandler<RegisterRoute> = async (c) => {
-  const user = c.req.valid("json");
+  const user = c.req.valid("json");//从请求中提取JSON数据
   user.secret = await argon2.hash(user.secret);
   const users = await db.query.User.findFirst({
     where(fields, operators) {

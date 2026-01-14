@@ -56,9 +56,10 @@ export const User = sqliteTable("user", {
   scope: text("scope").notNull().default("user"),
   secret: text("secret").notNull(),
 });
-export type Users = typeof User.$inferSelect;
+export type Users = typeof User.$inferSelect;// 查询结果的类型
+//zod验证
 export const sUser = createSelectSchema(User).extend({
-  permission: z.array(z.string()),
+  permission: z.array(z.string()),// 手动指定（覆盖自动生成的z.string()）
 });
 
 export const iUser = createInsertSchema(User).extend({
@@ -280,3 +281,19 @@ export const iCollection = createInsertSchema(Collection).omit
     partitionId: z.array(z.string()).default([])
   });
 export const uCollection = iCollection.partial();
+
+//bill Table
+export const Bill=sqliteTable('bill',{
+  ...Base,
+  userId: text("userId").notNull(),
+  keyId:text("keyId").notNull(),
+  modelName: text("modelName").notNull(),
+  consumptionAmount:integer("consumption_amount").notNull(),
+  balance:integer("balance").notNull(),
+});
+export type Bills = typeof Bill.$inferSelect;
+export const sBill = createSelectSchema(Bill);
+export const iBill = createInsertSchema(Bill);
+
+export const uBill = iBill.partial();
+//日志表

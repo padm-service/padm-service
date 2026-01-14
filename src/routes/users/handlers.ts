@@ -32,6 +32,8 @@ export const patch: AppRouteHandler<PatchRoute> = async (c) => {
   const auth = c.get("auth");
   const id = auth.user.id;
   const { updates, oldPass } = c.req.valid('json');
+  console.log(updates,oldPass);
+  
   if (oldPass) {
     const user = await db.query.User.findFirst(
       {
@@ -57,3 +59,4 @@ export const patch: AppRouteHandler<PatchRoute> = async (c) => {
     .returning();
   return c.json(Omit(user, ["secret"]), HttpStatusCodes.OK);
 };
+ 

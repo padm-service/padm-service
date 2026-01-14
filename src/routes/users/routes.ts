@@ -3,7 +3,7 @@ import * as HttpStatusCodes from "stoker/http-status-codes";
 import { jsonContent, jsonContentRequired } from "stoker/openapi/helpers";
 import { sUser, uUser } from "@/db/schema";
 import { notFoundSchema, errorSchema } from "@/lib/constants";
-const tags = ["User"];
+const tags = ["User"]; 
 
 
 export const patch = createRoute({
