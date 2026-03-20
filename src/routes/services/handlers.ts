@@ -5,7 +5,7 @@ import { proxy } from 'hono/proxy'
 import type { AppRouteHandler } from "@/lib/types";
 
 import db from "@/db";
-import { Node, Service } from "@/db/schema";
+import { Node, Service,Servicelog,Monthtotal } from "@/db/schema";
 import { ZOD_ERROR_CODES, ZOD_ERROR_MESSAGES } from "@/lib/constants";
 
 import type { CreateRoute, GetReadmeRoute, GetRoute, GetSchemaRoute, ListRoute, NodeCreateRoute, NodeGetRoute, NodeListRoute, NodePatchRoute, NodeRemoveRoute, PatchRoute, RemoveRoute } from "./routes";
@@ -15,6 +15,28 @@ export const create: AppRouteHandler<CreateRoute> = async (c) => {
   const auth = c.get("auth");
   const init = c.req.valid("json");
   const userId = auth.user.id;
+  // const clientApiKey = c.req.header('X-API-Key');
+  // console.log('Received API Key:', clientApiKey);
+  
+  // if (!clientApiKey) {
+  //   return c.json({ message: 'Unauthorized: No API Key provided' }, 401);
+  // }
+  // const config = c.get("config") || {};
+  // const serverApiKey = config.apiKey || process.env.API_KEY;
+  
+  // if (!serverApiKey) {
+  //   console.error('Server API Key not configured');
+  //   return c.json({ message: 'Server configuration error' }, 500);
+  // }
+  
+  // 验证 API Key
+  // if (clientApiKey !== serverApiKey) {
+  //   console.log('API Key mismatch:', {
+  //     client: clientApiKey?.substring(0, 8) + '...',
+  //     server: serverApiKey?.substring(0, 8) + '...'
+  //   });
+  //   return c.json({ message: 'Unauthorized: Invalid API Key' }, 401);
+  // }
   const [service] = await db.insert(Service).values({
     ...init,
     userId,
@@ -238,8 +260,20 @@ export const getReadme: AppRouteHandler<GetReadmeRoute> = async (c) => {
 };
 export const allService: any = async (c: Context) => {
   const auth = c.get("auth");
+  //console.log(auth);
   const { id } = c.req.param(); // 从ctx.params中获取id
-  const userId = auth ? auth.user.id : null;
+  const userId = auth.user.id;
+  //service?.schema.info.title
+  const service_schema=await db.query.Service.findFirst({
+        columns:{
+           schema:true,
+        },
+        where(fields,operators){
+          return operators.eq(fields.id,id)
+        }
+  });
+  //console.log(service_schema?.schema?.info?.title);
+  const service_name=service_schema?.schema?.info?.title;
   const nodes = await db.query.Node.findMany({
     where(fields, operators) {
       return operators.eq(fields.serviceId, id);
@@ -253,15 +287,65 @@ export const allService: any = async (c: Context) => {
     return c.json({ message: "There is no running node" }, HttpStatusCodes.NOT_FOUND);
   }
   const i = Math.floor(Math.random() * 10) % runnodes.length;
-  const node = nodes[i];
+  const node = runnodes[i]; 
   const url = `${node.url}${/\/fetch.*/.exec(c.req.url)![0].slice(6)}`;
   const ctype = c.req.raw.headers.get("content-type");
   const headers = new Headers({
     "content-type": ctype ?? "application/json",
   });
-  console.log(url)
+  console.log(url) 
+  console.log(c.req.raw.headers)
+    await db.insert(Servicelog).values({
+      userId,
+      //header:c.req.raw.headers,
+      header:Object.fromEntries(c.req.raw.headers.entries()),
+      method: c.req.raw.method,
+      url,
+      service_name,
+    });
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const time = `${year}-${month}`;
+    const existingRecord = await db.query.Monthtotal.findFirst({
+    where: (fields, { eq, and }) => 
+      and(
+        eq(fields.service, id),
+        eq(fields.time, time)
+      ),
+    });
+    if (existingRecord) {
+    const updated = await db
+      .update(Monthtotal)
+      .set({
+        times: existingRecord.times! + 1,
+        updated_at: now,
+      })
+      .where(
+        and(
+          eq(Monthtotal.service, id),
+          eq(Monthtotal.time, time)
+        )
+      );
+    //console.log('更新成功，当前次数:', updated[0].times);
+    //return updated[0];
+  } else {
+    const created = await db
+      .insert(Monthtotal)
+      .values({
+        service: id,
+        service_name,
+        time: time,
+        times: 1,
+        created_at: now,
+        updated_at: now,
+      });
+    //console.log('创建成功，初始次数: 1');
+    //return created[0];
+  }
+  //}  
   return fetch(url, {
-    method: c.req.raw.method,
+    method: c.req.raw.method,  
     headers,
     body: c.req.raw.body ? await c.req.raw.text() : undefined,
   });

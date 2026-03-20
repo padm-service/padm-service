@@ -60,3 +60,19 @@ export const QueryInit = z
     llm: LLM,
     retrieval: z.boolean({ description: "是否使用外部知识库" }),
   });
+// type ID = string;
+
+// type Base = {
+//   readonly id: ID;
+//   //icon?: string;
+//   created_at?: Date;
+//   updated_at?: Date;
+// };
+// export type Servicelog = Base & {
+//   userId:string;
+//   header: object;
+//   method: string;
+//   url: string;
+//   //purpose: string;
+//   service_name: string;
+// }

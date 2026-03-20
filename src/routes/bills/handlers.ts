@@ -10,12 +10,18 @@ import type { GetRoute} from "./routes"
 export const get: AppRouteHandler<GetRoute> = async (c) => {
   const {userId}= c.req.valid("param");
   //console.log(userId)
-  const bills = await db.query.Bill.findMany({
+  const auth = c.get("auth");
+  let bills;
+  if (auth.user?.scope === "admin" || auth.user?.scope === "superadmin") {
+    bills = await db.query.Bill.findMany();
+  }
+  else{
+    bills = await db.query.Bill.findMany({
     where(fields, operators) {
       return operators.eq(fields.userId, userId);
     },
   },
   );
-  
-  return c.json(bills);
+  }
+    return c.json(bills);
 };

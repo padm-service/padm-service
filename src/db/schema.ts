@@ -297,3 +297,27 @@ export const iBill = createInsertSchema(Bill);
 
 export const uBill = iBill.partial();
 //日志表
+export const Servicelog=sqliteTable('servicelog',{
+  ...Base,
+  userId:text("userId").notNull(),
+  //header: text("header"),
+  header:text("header",{ mode: "json" }).$type<Record<string,string>>(),
+  method:text("method").notNull(), 
+  url:text("url").notNull(),
+  //purpose:text("purpose").notNull(),
+  service_name:text("service_name").notNull(),
+});
+export type Servicelogs = typeof Servicelog.$inferSelect;
+export const sServicelog = createSelectSchema(Servicelog);
+export const iServicelog = createInsertSchema(Servicelog);
+//日志月表
+export const Monthtotal=sqliteTable('monthtotal',{
+    ...Base,
+    times:integer("times"),
+    time:text("time").notNull(),
+    service_name:text("service_name").notNull(),
+    service:text("service").notNull(), 
+});
+export type Monthtotals = typeof Monthtotal.$inferSelect;
+export const sMonthtotal = createSelectSchema(Monthtotal);
+export const iMonthtotal = createInsertSchema(Monthtotal);

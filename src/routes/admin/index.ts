@@ -37,7 +37,7 @@ app.put('/users', async (c) => {
     }
     const users = await db.query.User.findMany(
         {
-            columns: {
+            columns: { 
                 secret: false,
             },
             where(fields, operators) {
