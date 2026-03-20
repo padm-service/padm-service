@@ -13,6 +13,40 @@ import { CSVLoader } from "@langchain/community/document_loaders/fs/csv";
 import { TextLoader } from "langchain/document_loaders/fs/text";
 import { BaseDocumentLoader } from "@langchain/core/document_loaders/base";
 import pLimit from 'p-limit';
+import { exec } from "child_process";
+import path from "path";
+export function convertDocToDocx(inputPath: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    // 检查文件是否存在
+    if (!fs.existsSync(inputPath)) {
+      return reject(new Error("输入文件不存在"));
+    }
+
+    if (!inputPath.endsWith(".doc")) {
+      return reject(new Error("输入文件必须是 .doc 格式"));
+    }
+
+    const outputDir = path.dirname(inputPath);
+    const fileName = path.basename(inputPath, ".doc");
+    const outputPath = path.join(outputDir, `${fileName}.docx`);
+
+    // LibreOffice 命令
+    //const command = `libreoffice --headless --convert-to docx "${inputPath}" --outdir "${outputDir}"`;
+    const command = `soffice --headless --convert-to docx "${inputPath}" --outdir "${outputDir}"`;
+    exec(command, (error, stdout, stderr) => {
+      if (error) {
+        return reject(new Error(`转换失败: ${stderr || error.message}`));
+      }
+
+      // 检查输出文件是否生成
+      if (!fs.existsSync(outputPath)) {
+        return reject(new Error("转换完成但未找到输出文件"));
+      }
+
+      resolve(outputPath);
+    });
+  });
+}
 export function convertWordToHtml(wordFilePath: string) {
   return new Promise((resolve, reject) => {
     Mammoth
@@ -42,19 +76,36 @@ export async function toText(loader: BufferLoader | BaseDocumentLoader | TextLoa
   const documents = await loader.load();
   const docs = await textSplitter.splitDocuments(documents);
   const limit = pLimit(10);
-  const datas = await Promise.all(docs.map(async (doc) => {
+  const datas = await Promise.all(
+  docs.map(doc =>
     limit(async () => {
-       const embedding = await ZhipuAIEmbedding.embedQuery(doc.pageContent);
-       return {
+      const embedding = await ZhipuAIEmbedding.embedQuery(doc.pageContent);
+      return {
         source: url,
         langchain_text: doc.pageContent,
         langchain_vector: embedding,
         image: "",
-        };
-      })
+      };
+    })
+  )
+);
+  // const datas = await Promise.all(docs.map(async (doc) => {
+  //   limit(async () => {
+  //      const embedding = await ZhipuAIEmbedding.embedQuery(doc.pageContent);
+  //      return {
+  //       source: url,
+  //       langchain_text: doc.pageContent,
+  //       langchain_vector: embedding,
+  //       image: "",
+  //       };
+  //     })
    
-  }));
+  // }));
   const fieldsData = datas.filter(item => item !== undefined); // 过滤掉可能的 undefined
+  console.log("插入数据条数:", datas.length);
+  console.log("示例数据:", datas[0]);
+  console.log("222插入数据条数:", fieldsData.length);
+  console.log("222示例数据:", fieldsData[0]);
   const res = await MilvusClients.insert({
     collection_name: collectionName,
     partition_name: partitionName,
@@ -168,7 +219,13 @@ export async function vector(url: string, collectionId: string, partitionID: str
   const suffix = pathSplit.pop();
   let imageUrls: string[] = [];
   switch (suffix) {
-    case 'doc':
+    case 'doc': {
+      const result = await convertDocToDocx(filePath);
+      console.log('转换后的路径',result)
+      const loader = new DocxLoader(result);
+      await toText(loader, collectionId, partitionID, url);
+      break;
+    }
     case "docx": {
       const loader = new DocxLoader(filePath);
       await toText(loader, collectionId, partitionID, url);
