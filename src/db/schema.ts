@@ -306,6 +306,7 @@ export const Servicelog=sqliteTable('servicelog',{
   url:text("url").notNull(),
   //purpose:text("purpose").notNull(),
   service_name:text("service_name").notNull(),
+  user_name:text("user_name").notNull().default(''),
 });
 export type Servicelogs = typeof Servicelog.$inferSelect;
 export const sServicelog = createSelectSchema(Servicelog);

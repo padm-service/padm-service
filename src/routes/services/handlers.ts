@@ -263,6 +263,15 @@ export const allService: any = async (c: Context) => {
   //console.log(auth);
   const { id } = c.req.param(); // 从ctx.params中获取id
   const userId = auth.user.id;
+  const userName = await db.query.User.findFirst({
+    columns: {
+      name: true,
+    },
+    where(fields, operators) {
+      return operators.eq(fields.id, userId);
+    },
+  });
+  console.log('userName:', userName);
   //service?.schema.info.title
   const service_schema=await db.query.Service.findFirst({
         columns:{
@@ -302,6 +311,7 @@ export const allService: any = async (c: Context) => {
       method: c.req.raw.method,
       url,
       service_name,
+      user_name: userName?.name,
     });
     const now = new Date();
     const year = now.getFullYear();
