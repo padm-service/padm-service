@@ -32,3 +32,8 @@ test.db
 .vercel
 dist
 bun.lockb
+
+# ignore documents
+*.doc
+*.docx
+*.pdf

@@ -141,10 +141,14 @@ export const chatGet: AppRouteHandler<ChatGetRoute> = async (c) => {
   return c.json(msg, HttpStatusCodes.OK);
 };
 export const chatList: AppRouteHandler<ChatListRoute> = async (c) => {
+  const auth = c.get("auth");
   const { assistantId } = c.req.valid("param");
   const chats = await db.query.Chat.findMany({
     where(fields, operators) {
-      return operators.eq(fields.assistantId, assistantId);
+      return operators.and(
+        operators.eq(fields.assistantId, assistantId),
+        operators.eq(fields.userId, auth.user.id)
+      )
     },
   })
   return c.json(chats);
