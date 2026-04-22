@@ -58,7 +58,10 @@ export const QueryInit = z
     service: z.array(z.string({ description: "服务 ID" })),
     knowledge: Knowledge,
     llm: LLM,
-    retrieval: z.boolean({ description: "是否使用外部知识库" }),
+    // retrieval: z.boolean({ description: "是否使用外部知识库" }),
+    options: z.object({
+      retrieval: z.boolean({ description: "是否使用外部知识库" })
+  })
   });
 // type ID = string;
 

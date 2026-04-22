@@ -225,17 +225,12 @@ export const chatList = createRoute({
     ),
   },
 });
-
 export const chatQuery = createRoute({
-  path: "/assistants/{assistantId}/chats/{chatId}/query",
+  path: "/assistants/query",  
   method: "post",
   summary: "Generate a chat",
   description: "Generate outputs with optional services or knowledge.",
   request: {
-    params: z.object({
-      assistantId: z.string({ description: "assistant id" }),
-      chatId: z.string({ description: "chat id" }),
-    }),
     body: jsonContentRequired(
       QueryInit,
       "query json param",
@@ -243,22 +238,14 @@ export const chatQuery = createRoute({
   },
   tags: chatTags,
   responses: {
-    [HttpStatusCodes.OK]:
-    {
+    [HttpStatusCodes.OK]: {
       description: "chat Generate",
       content: {
-        // "application/json": {
-        //   schema: QueryMessage,
-        // },
         "text/event-stream": {
           schema: QueryMessage,
         },
       },
     },
-    [HttpStatusCodes.NOT_FOUND]: jsonContent(
-      notFoundSchema,
-      "Chat not found",
-    ),
     [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
       createErrorSchema(IdUUIDParamsSchema),
       "The validation error(s)",

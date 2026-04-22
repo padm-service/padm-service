@@ -27,12 +27,7 @@ export const create: AppRouteHandler<CreateRoute> = async (c) => {
 
 export const list: AppRouteHandler<ListRoute> = async (c) => {
     const auth = c.get('auth');
-    const collections = await db.query.Collection.findMany({
-        where(fields, operators) {
-            return operators.eq(fields.userId, auth.user.id);
-        },
-    },
-    );
+    const collections = await db.query.Collection.findMany();
     return c.json(collections);
 }
 

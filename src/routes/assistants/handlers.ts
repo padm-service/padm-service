@@ -188,23 +188,26 @@ export const msgCreate: AppRouteHandler<MsgCreateRoute> = async (c) => {
   return c.json(msg, HttpStatusCodes.OK);
 };
 // @ts-ignore
+// @ts-ignore
 export const chatQuery: AppRouteHandler<ChatQueryRoute> = async (c) => {
   const init = c.req.valid("json");
+  console.log("ChatQuery Init:", init);
   const auth = c.get("auth");
   const userId = auth.user.id;
-  const { assistantId, chatId } = c.req.valid("param");
-  const { service, knowledge, llm, retrieval } = init;
+  const { service: service_ids, knowledge, llm, options } = init;
+  const retrieval = options?.retrieval ?? false;
+  
+  // 设置模型参数
   ChatZhipu.model = llm.model;
   ChatZhipu.temperature = llm.temperature;
   ChatZhipu.topP = llm.top_p;
-  const messagesdb = init.messages as MessageFieldWithRole[];
-  const commonMes = { userId, assistantId, chatId };
-  await db.insert(Msg).values({
-    ...commonMes,
-    content: messagesdb[messagesdb.length - 1].content,
-    role: "user",
-  })
+  
+  // 处理消息
+  // const messagesdb = init.messages as MessageFieldWithRole[];
   const messages = normalize_messages(init.messages as MessageFieldWithRole[]);
+  console.log("Normalized messages:", messages,messages.length);
+  
+  // 添加系统提示
   if (
     llm.systemPrompt &&
     messages.length > 0 &&
@@ -217,138 +220,179 @@ export const chatQuery: AppRouteHandler<ChatQueryRoute> = async (c) => {
   }
 
   let tools: Array<ToolDefinition> | undefined | any;
-  if (!retrieval) {
+
+  // 非检索模式：加载服务工具
+  if (!retrieval && service_ids && service_ids.length > 0) {
     const services = await db.transaction(async (tx) => {
-      const services: any = [];
-      service.forEach(async (serviceId) => {
+      const results: any = [];
+      // 注意：forEach 中的 async 不会等待，改用 for...of
+      for (const serviceId of service_ids) {
         const singleService = await tx.query.Service.findFirst({
           where(fields, operators) {
             return operators.eq(fields.id, serviceId);
           },
         });
-        services.push(singleService);
-      })
-      return services;
-    });
-    tools = [];
-    for (const service of services) {
-      for (const tool of service.tools) {
-        tools.push(tool);
-      }
-    }
-    const glmWithTools = ChatZhipu?.bindTools(tools);
-    return streamSSE(c, async (stream) => {
-      var tools: any = [];
-      const res = await glmWithTools.stream(messages);
-      for await (const chunk of res) {
-        if (chunk?.tool_calls && chunk?.tool_calls?.length > 0) {
-          tools.push(...chunk.tool_calls);
+        if (singleService) {
+          results.push(singleService);
         }
       }
-      if (tools) {
-        for (const tool of tools) {
+      return results;
+    });
+    
+    tools = [];
+    for (const service of services) {
+      if (service.tools) {
+        for (const tool of service.tools) {
+          tools.push(tool);
+        }
+      }
+    }
+    
+    const glmWithTools = ChatZhipu?.bindTools(tools);
+    console.log("GLM with Tools:", glmWithTools);
+    return streamSSE(c, async (stream) => {
+      const collectedTools: any = [];
+      let hasToolCall = false;
+      let normalContent = '';
+      console.log("Starting stream with tools, initial messages:", messages);
+      const res = await glmWithTools.stream(messages);
+      console.log("res：",res);
+      
+      // 收集所有 tool_calls
+      for await (const chunk of res) {
+          if (chunk?.tool_calls?.length) {
+            hasToolCall = true;
+            collectedTools.push(...chunk.tool_calls);
+            continue;
+        }
+          if (!hasToolCall && chunk?.content) {
+            await stream.writeSSE({
+              event: "message",
+              data: JSON.stringify({ content: chunk.content }),
+           });
+        } 
+      }
+      console.log("Collected tools:", collectedTools);
+      if (collectedTools.length === 0) {
+        return;
+      }
+      // 执行工具调用
+      if (collectedTools.length > 0) {
+        for (const tool of collectedTools) {
           const { name, arguments: args } = tool.function;
-          var [service, endpoint] = name?.split("::") ?? [];
-          const url = `${new URL(c.req.url).origin}/services/${service}/fetch${endpoint}`;
-          console.log(url);
+          const [serviceName, endpoint] = name?.split("::") ?? [];
+          const url = `${new URL(c.req.url).origin}/services/${serviceName}/fetch${endpoint}`;
+          
+          console.log("Tool call URL:", url);
+          
           const headers = new Headers(c.req.raw.headers);
           headers.delete('Content-Length');
+          
           const req = new Request(url, {
             method: "POST",
             headers,
             body: args,
           });
+          
           const body = await fetch(req).then(res => res.text());
           messages.push({
             tool_call_id: tool?.id ?? "",
             role: "tool",
             content: body,
           });
+          console.log("Updated messages after tool call:", messages); 
         }
-        const res = await glmWithTools.stream(messages);
+        
+        // 第二次流式调用获取最终回复
+        const finalRes = await glmWithTools.stream(messages);
         let fullContent = '';
-        for await (const chunk of res) {
+        
+        for await (const chunk of finalRes) {
           fullContent += chunk.content;
-          if (chunk.response_metadata.finished === "stop") {
-            await db.insert(Msg).values({
-              ...commonMes,
-              content: [{ type: 'text', text: fullContent }],
-              role: "assistant",
-            })
-            return;
+          if (chunk.response_metadata?.finished === "stop") {
+            break;
           }
           await stream.writeSSE({
             event: "message",
-            data: JSON.stringify(chunk.content),
+            data: JSON.stringify({ content: chunk.content }),
           });
         }
+        console.log("fullcontent:",fullContent);
       }
-    })
-  };
+    });
+  }
 
+  // 检索模式：使用知识库
   if (retrieval && knowledge) {
-    // const knowledgeRes = await rag(messages[0].content as string, "collectionID", ["partitionIDs"], "prompt", "model") as any;
-    const queryVector = await ZhipuAIEmbedding.embedQuery(messages[messages.length - 1].content as string);
+    const queryContent = messages[messages.length - 1].content as string;
+    console.log("提问:", queryContent);
+    const queryVector = await ZhipuAIEmbedding.embedQuery(queryContent);
+    
     await MilvusClients.loadCollection({ collection_name: knowledge.collection });
     const res = await MilvusClients.search({
       collection_name: knowledge.collection,
-      // partition_names: knowledge.partition,
       data: queryVector,
       limit: 3,
     });
+    console.log("Milvus search results:", res);
     await MilvusClients.releaseCollection({ collection_name: knowledge.collection });
+    
     let context = "";
     const images: Imag[] = [];
+    
     for (const r of res.results) {
-      if (r.image !== "") {
+      if (r.image && r.image !== "") {
         images.push({
           image_text: r.langchain_text,
           image_url: r.image,
         });
-      }
-      else {
-        context += r.langchain_text;
+      } else {
+        context += r.langchain_text + "\n";
       }
     }
+    console.log("构建的上下文:", context);
 
     const PROMPT_TEMPLATE = `
-            使用<context>内的信息对<question>标记中包含的问题提供一个简明的答案。
-            如果你不知道答案，就说你不知道，不要试图编造答案。
-            <context>
-            ${context}
-            </context>
-    
-            <question>
-            ${messages[messages.length - 1].content}
-            </question>`;
+使用<context>内的信息对<question>标记中包含的问题提供一个简明的答案。
+如果你不知道答案，就说你不知道，不要试图编造答案。
+<context>
+${context}
+</context>
+
+<question>
+${queryContent}
+</question>`;
+
     messages[messages.length - 1].content = PROMPT_TEMPLATE;
+    console.log("最终发送给模型的消息:", messages);
+    
     return streamSSE(c, async (stream) => {
+      console.log("流式",stream);
       const res = await ChatZhipu.stream(messages);
-      let fullContent = '';
+      console.log("流式里面的res：",res);
+      let fullContent = ''; 
+      
       for await (const chunk of res) {
         fullContent += chunk.content;
-        if (chunk.response_metadata.finished === "stop") {
-          await db.insert(Msg).values({
-            ...commonMes,
-            content: [{ type: 'text', text: fullContent }],
-            role: "assistant",
-          })
-          return;
+        if (chunk.response_metadata?.finished === "stop") {
+          break;
         }
         await stream.writeSSE({
           event: "message",
-          data: JSON.stringify(chunk.content),
+          data: JSON.stringify({ content: chunk.content }),
         });
-        if (images) {
-          await stream.writeSSE({
-            event: "img",
-            data: JSON.stringify(images),
-          });
-        }
       }
-    })
-
+      console.log("fullcontent:",fullContent);
+      // 如果有图片，在流结束后发送
+      if (images.length > 0) {
+        await stream.writeSSE({
+          event: "img",
+          data: JSON.stringify(images),
+        });
+      }
+    });
   }
+  
 }
 function normalize(cs: MessageContentComplex[]): string {
   let text = "";
