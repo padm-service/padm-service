@@ -3,7 +3,7 @@ import * as HttpStatusCodes from "stoker/http-status-codes";
 import * as HttpStatusPhrases from "stoker/http-status-phrases";
 import { proxy } from 'hono/proxy'
 import type { AppRouteHandler } from "@/lib/types";
-
+import type { OpenAPIObject} from 'openapi3-ts/oas31';
 import db from "@/db";
 import { Node, Service,Servicelog,Monthtotal } from "@/db/schema";
 import { ZOD_ERROR_CODES, ZOD_ERROR_MESSAGES } from "@/lib/constants";
@@ -282,7 +282,7 @@ export const allService: any = async (c: Context) => {
         }
   });
   //console.log(service_schema?.schema?.info?.title);
-  const service_name=service_schema?.schema?.info?.title;
+  const service_name=(service_schema?.schema as OpenAPIObject)?.info?.title;
   const nodes = await db.query.Node.findMany({
     where(fields, operators) {
       return operators.eq(fields.serviceId, id);
