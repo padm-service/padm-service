@@ -59,6 +59,14 @@ export function convertWordToHtml(wordFilePath: string) {
       });
   });
 };
+// export function convertWordToHtml(wordFilePath: string) {
+//   return Mammoth.convertToHtml({ 
+//     path: wordFilePath 
+//   }, {
+//     // 关键：不转换图片，只提文本，或者将图片处理逻辑分离
+//     ignoreEmptyParagraphs: true
+//   });
+// };
 
 export function extractImageUrls(html: any) {
   const $ = load(html);
@@ -72,103 +80,180 @@ export function extractImageUrls(html: any) {
   return imageUrls;
 };
 
-export async function toText(loader: BufferLoader | BaseDocumentLoader | TextLoader, collectionName: string, partitionName: string, url: string) {
-  const documents = await loader.load();
-  const docs = await textSplitter.splitDocuments(documents);
-  const limit = pLimit(10);
-  const datas = await Promise.all(
-  docs.map(doc =>
-    limit(async () => {
-      const embedding = await ZhipuAIEmbedding.embedQuery(doc.pageContent);
-      return {
-        source: url,
-        langchain_text: doc.pageContent,
-        langchain_vector: embedding,
-        image: "",
-      };
-    })
-  )
-);
-  // const datas = await Promise.all(docs.map(async (doc) => {
-  //   limit(async () => {
-  //      const embedding = await ZhipuAIEmbedding.embedQuery(doc.pageContent);
-  //      return {
-  //       source: url,
-  //       langchain_text: doc.pageContent,
-  //       langchain_vector: embedding,
-  //       image: "",
-  //       };
-  //     })
-   
-  // }));
-  const fieldsData = datas.filter(item => item !== undefined); // 过滤掉可能的 undefined
-  console.log("插入数据条数:", datas.length);
-  console.log("示例数据:", datas[0]);
-  console.log("222插入数据条数:", fieldsData.length);
-  console.log("222示例数据:", fieldsData[0]);
-  const res = await MilvusClients.insert({
-    collection_name: collectionName,
-    partition_name: partitionName,
-    fields_data: fieldsData,
-  });
-  console.log(res);
 // export async function toText(loader: BufferLoader | BaseDocumentLoader | TextLoader, collectionName: string, partitionName: string, url: string) {
 //   const documents = await loader.load();
 //   const docs = await textSplitter.splitDocuments(documents);
-//   const datas = await Promise.all(docs.map(async (doc) => {
-//     const embedding = await ZhipuAIEmbedding.embedQuery(doc.pageContent);
-//     return {
-//       source: url,
-//       langchain_text: doc.pageContent,
-//       langchain_vector: embedding,
-//       image: "",
-//     };
-//   }));
+//   const limit = pLimit(5);
+//   const datas = await Promise.all(
+//   docs.map(doc =>
+//     limit(async () => {
+//       const embedding = await ZhipuAIEmbedding.embedQuery(doc.pageContent);
+//       return {
+//         source: url,
+//         langchain_text: doc.pageContent,
+//         langchain_vector: embedding,
+//         image: "",
+//       };
+//     })
+//   )
+// );
+//   const fieldsData = datas.filter(item => item !== undefined); // 过滤掉可能的 undefined
+//   console.log("插入数据条数:", datas.length);
+//   console.log("示例数据:", datas[0]);
+//   console.log("222插入数据条数:", fieldsData.length);
+//   console.log("222示例数据:", fieldsData[0]);
 //   const res = await MilvusClients.insert({
 //     collection_name: collectionName,
 //     partition_name: partitionName,
-//     fields_data: datas,
+//     fields_data: fieldsData,
 //   });
 //   console.log(res);
+// }
+// export async function toText(
+//   loader: BufferLoader | BaseDocumentLoader | TextLoader, 
+//   collectionName: string, 
+//   partitionName: string, 
+//   url: string
+// ) {
+//   const documents = await loader.load();
+//   const docs = await textSplitter.splitDocuments(documents);
+//   const limit = pLimit(2); // 降低并发数，减少内存占用
+//   let successCount = 0;
+  
+//   const tasks = docs.map((doc, index) =>
+//     limit(async () => {
+//       try {
+//         const embedding = await ZhipuAIEmbedding.embedQuery(doc.pageContent);
+        
+//         // 每条数据单独插入，不累积
+//         await MilvusClients.insert({
+//           collection_name: collectionName,
+//           partition_name: partitionName,
+//           fields_data: [{
+//             source: url,
+//             langchain_text: doc.pageContent,
+//             langchain_vector: embedding,
+//             image: "",
+//           }],
+//         });
+        
+//         successCount++;
+//         // console.log(`插入成功: ${successCount}/${docs.length}`);
+//       } catch (error) {
+//         console.error(`第 ${index + 1} 条插入失败:`, error);
+//       }
+//     })
+//   );
+  
+//   await Promise.all(tasks);
+//   console.log(`全部处理完成，成功插入 ${successCount} 条`);
+// }
+export async function toText(
+  loader: BufferLoader | BaseDocumentLoader | TextLoader, 
+  collectionName: string, 
+  partitionName: string, 
+  url: string
+) {
+  const documents = await loader.load();
+  const docs = await textSplitter.splitDocuments(documents);
+  
+  // 1. 关键优化：不要直接 map，而是分批处理（Batching）
+  const batchSize = 5; 
+  for (let i = 0; i < docs.length; i += batchSize) {
+    const batch = docs.slice(i, i + batchSize);
+    
+    await Promise.all(batch.map(async (doc) => {
+      try {
+        const embedding = await ZhipuAIEmbedding.embedQuery(doc.pageContent);
+        
+        await MilvusClients.insert({
+          collection_name: collectionName,
+          partition_name: partitionName,
+          fields_data: [{
+            source: url,
+            langchain_text: doc.pageContent,
+            langchain_vector: embedding,
+            image: "",
+          }],
+        });
+      } catch (error) {
+        console.error(`插入失败:`, error);
+      }
+    }));
 
-  // for (const doc of docs) {
-  //   doc.metadata.image = "";
-  //   const embedding = await ZhipuAIEmbedding.embedQuery(doc.pageContent);
-  //   const res = await MilvusClients.insert({
-  //     collection_name: collectionName,
-  //     partition_name: partitionName,
-  //     fields_data: [{
-  //       source: url,
-  //       langchain_text: doc.pageContent,
-  //       langchain_vector: embedding,
-  //       image: "",
-  //     }],
-  //   });
-  //   console.log(res);
-  // }
+    // 2. 强制释放当前批次的引用协助 GC
+    // @ts-ignore
+    batch.length = 0;
+  }
+  
+  // 3. 这里的 documents 可能非常大，处理完后手动置空
+  // @ts-ignore
+  documents.length = 0;
+  console.log(`处理完成`);
 }
-
+// async function imageToSQL(collectionName: string, partitionName: string, imageUrls: string[], model: string = 'glm-4v-flash', url: string) {
+//   if (model) {
+//     ChatZhipu.model = model;
+//   }
+//   imageUrls.forEach(async (imageUrl) => {
+//     const messages = [{ role: "user", content: [{ type: "image_url", image_url: { url: imageUrl } }, { type: "text", text: "请描述这张图片" }] }];
+//     //调用智谱AI的多模态模型生成图片描述
+//     const res = await ChatZhipu.invoke(messages);
+//     const vector = await ZhipuAIEmbedding.embedQuery(res.content as string);
+//     const data = {
+//       source: url,
+//       langchain_text: res.content,
+//       langchain_vector: vector,
+//       image: imageUrl,
+//     };
+//     await MilvusClients.insert({
+//       collection_name: collectionName,
+//       partition_name: partitionName,
+//       fields_data: [data],
+//     });
+//   });
+// }
 async function imageToSQL(collectionName: string, partitionName: string, imageUrls: string[], model: string = 'glm-4v-flash', url: string) {
   if (model) {
     ChatZhipu.model = model;
   }
-  imageUrls.forEach(async (imageUrl) => {
-    const messages = [{ role: "user", content: [{ type: "image_url", image_url: { url: imageUrl } }, { type: "text", text: "请描述这张图片" }] }];
-    //调用智谱AI的多模态模型生成图片描述
-    const res = await ChatZhipu.invoke(messages);
-    const vector = await ZhipuAIEmbedding.embedQuery(res.content as string);
-    const data = {
-      source: url,
-      langchain_text: res.content,
-      langchain_vector: vector,
-      image: imageUrl,
-    };
-    await MilvusClients.insert({
-      collection_name: collectionName,
-      partition_name: partitionName,
-      fields_data: [data],
-    });
-  });
+  
+  // 添加并发控制，限制同时处理 2 个图片
+  const limit = pLimit(2);
+  
+  const tasks = imageUrls.map(imageUrl =>
+    limit(async () => {
+      try {
+        const messages = [{ 
+          role: "user", 
+          content: [{ type: "image_url", image_url: { url: imageUrl } }, { type: "text", text: "请描述这张图片" }] 
+        }];
+        
+        // 调用智谱AI的多模态模型生成图片描述
+        const res = await ChatZhipu.invoke(messages);
+        const vector = await ZhipuAIEmbedding.embedQuery(res.content as string);
+        
+        const data = {
+          source: url,
+          langchain_text: res.content,
+          langchain_vector: vector,
+          image: imageUrl,
+        };
+        
+        await MilvusClients.insert({
+          collection_name: collectionName,
+          partition_name: partitionName,
+          fields_data: [data],
+        });
+        
+        console.log(`图片处理成功: ${imageUrl.substring(0, 50)}...`);
+      } catch (error: any) {
+        console.error(`图片处理失败，来源文件: ${url}`, error.message);
+      }
+    })
+  );
+  
+  await Promise.all(tasks);
 }
 
 export async function createCollection(collectionId: string) {
@@ -226,21 +311,78 @@ export async function vector(url: string, collectionId: string, partitionID: str
       await toText(loader, collectionId, partitionID, url);
       break;
     }
+    // case "docx": {
+    //   const loader = new DocxLoader(filePath);
+    //   await toText(loader, collectionId, partitionID, url);
+    //   try {
+    //     const html = await convertWordToHtml(filePath);
+    //     imageUrls = extractImageUrls(html);
+    //     if (imageUrls) {
+    //       console.log('文本处理完成，等待 5 秒后开始处理图片...');
+    //       await new Promise(resolve => setTimeout(resolve, 5000));
+    //       await imageToSQL(collectionId, partitionID, imageUrls, model, url);
+    //     }
+    //   }
+    //   catch (error) {
+    //     console.log(error);
+    //   }
+    //   break;
+    // };
+    //内存溢出问题
+    // case "docx": {
+    //     const loader = new DocxLoader(filePath);
+    //     await toText(loader, collectionId, partitionID, url);
+    //     loader;
+    //     if (global.gc) {
+    //         global.gc();
+    //         await new Promise(resolve => setTimeout(resolve, 2000));
+    //     }
+    //     try {
+    //         const html = await convertWordToHtml(filePath);
+    //         imageUrls = extractImageUrls(html);  
+    //         if (imageUrls) {
+    //             console.log(`文本处理完成，发现 ${imageUrls.length} 张图片，2秒后开始处理...`);
+    //             await new Promise(resolve => setTimeout(resolve, 5000));
+    //             await imageToSQL(collectionId, partitionID, imageUrls, model, url);
+    //         }
+    //     } catch (error) {
+    //             console.log('图片处理出错:', error);
+    //       }
+    //    break;
+    // }
     case "docx": {
-      const loader = new DocxLoader(filePath);
-      await toText(loader, collectionId, partitionID, url);
-      try {
-        const html = await convertWordToHtml(filePath);
-        imageUrls = extractImageUrls(html);
-        if (imageUrls) {
-          await imageToSQL(collectionId, partitionID, imageUrls, model, url);
+    // 1. 先处理文本
+    const loader = new DocxLoader(filePath);
+    await toText(loader, collectionId, partitionID, url);
+    
+    // 2. 尝试提取图片
+    try {
+        // 使用 let 定义，方便后续手动释放
+        let htmlContent = await convertWordToHtml(filePath);
+        
+        imageUrls = extractImageUrls(htmlContent);
+        
+        // --- 关键优化点：立即释放这个巨大的字符串 ---
+        htmlContent = ""; // 赋予空字符串
+        // @ts-ignore
+        htmlContent = null; 
+        
+        if (imageUrls && imageUrls.length > 0) {
+            console.log(`发现 ${imageUrls.length} 张图片，准备处理...`);
+            
+            // 在处理图片前，给 GC 一个喘息的机会
+            if (global.gc) {
+                global.gc();
+                console.log('已手动触发垃圾回收');
+            }
+            
+            await imageToSQL(collectionId, partitionID, imageUrls, model, url);
         }
-      }
-      catch (error) {
-        console.log(error);
-      }
-      break;
-    };
+    } catch (error) {
+        console.log('图片提取出错:', error);
+    }
+    break;
+}
     case "pdf": {
       const loader = new PDFLoader(filePath);
       await toText(loader, collectionId, partitionID, url);

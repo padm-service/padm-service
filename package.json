@@ -4,8 +4,8 @@
   "version": "1.0.0",
   "license": "MIT",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
-    "start": "node ./dist/src/index.js",
+    "dev": "tsx watch --max-old-space-size=8192 src/index.ts",
+    "start": "node --max-old-space-size=8192 ./dist/src/index.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "npm run lint --fix",
