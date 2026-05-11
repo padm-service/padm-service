@@ -53,7 +53,7 @@ export default function createApp() {
         },
       },
     );
-    if (user?.scope !== 'admin') {
+    if (user?.scope !== 'superadmin') {
       throw new HTTPException(401, {
         res: unauthorized(c, "No permission to access this interface!"),
       });
