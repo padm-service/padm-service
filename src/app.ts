@@ -9,6 +9,7 @@ import users from "@/routes/users"
 import admin from "@/routes/admin"
 import bills from "@/routes/bills"
 import stats from "@/routes/stats"
+import integration from "@/routes/integration";
 import { consume } from "./lib/receive";
 import db from "@/db";
 const app = createApp();
@@ -19,6 +20,7 @@ const routes = [
   assistants,
   services,
   files,
+  integration,
   colletions,
   users,
   admin,
